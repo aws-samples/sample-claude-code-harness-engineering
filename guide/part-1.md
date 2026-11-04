@@ -1,0 +1,91 @@
+# Part 1: Turn the team's rules into a harness
+
+## Introduction
+
+Your job in this workshop is to build a code review loop that minimizes how much human attention it takes to enforce a dev team's rules and conventions. The platform team went through their past code review comments and found thirteen themes that keep coming up.
+
+In Part 1, you turn those themes into a harness: deterministic checks for what can be checked, and a reviewer agent for what takes judgment. In Part 2, you measure whether you can trust the reviewer, improve it, and decide when a person still needs to look.
+
+**Part 1 is 30 minutes, in three chunks of 10.**
+
+### The app you'll be working on
+
+`appointment_reminders/` is a small Python service for a business with several branches. It finds customers' upcoming appointments and sends them reminders through a messaging provider. You won't be adding features to it: it's the code that the team's rules, and the PRs you'll review, are about.
+
+Claude can help you get up to speed on the codebase.
+
+## How this works
+
+- **`./lab` runs everything.** Run it in a second terminal, or from inside Claude Code by putting `!` in front, as in `! ./lab next`. `./lab next` moves you on and tells you what to do. `./lab` on its own shows where you are.
+- **Your answers go in `my-work/`.** The files are numbered, and each `TODO` is a place for your answer.
+- **Use Claude freely,** but leave as much of the thinking to yourself as you can, and let it do the implementation.
+- **If you need any help, ask Claude.**
+
+## Chunk 1: Sort the rules (10 min)
+
+Identify which of the dev team's review rules can be handled deterministically, and which need judgment.
+
+**Start:** `./lab next`
+
+**Your file:** `my-work/1-rule-sort.md`
+
+1. **Meet the code (2 min).** Ask Claude: `Give me a two minute tour of appointment_reminders.`
+2. **Read the brief.** It's in `docs/team-rules.md`.
+3. **Put each rule in its home:** `check`, `reviewer`, `both` or `neither`. Don't ask "could I write a regex for this?" Ask what happens when the check is wrong. A check that cries wolf gets switched off.
+4. **Compare with a neighbor** on the ones you found hardest.
+
+**Done when** there are no TODOs left in the file.
+
+## Chunk 2: Build the checks (10 min)
+
+Turn the rules that can be checked into one script, and decide when it runs and how strict it is.
+
+**Start:** `./lab next`
+
+**Your file:** `my-work/2-checks-plan.md`, which already lists the rules you sorted as `check` or `both`
+
+1. **Make the decisions in the plan.** When do the checks run? For each one, how bad is a miss, does it block or warn, and does it look at new code or all of it? There are several good answers. Running often gives faster feedback and more noise, and `app/api/health.py` already breaks R7, so think about whether a typo fix there should be stopped.
+2. **Hand it to Claude:**
+   ```
+   Read my-work/2-checks-plan.md. Tell me if anything looks wrong, then build it in scripts/run_checks.py and get ./lab test-checks passing.
+   ```
+3. **Test it.** `./lab test-checks` tries your checks on cases we've written, including near misses that must not fire. Ask Claude to add your near miss as a test too.
+4. **Wire it up,** using the moment you chose:
+
+   | You chose | Do this |
+   |---|---|
+   | On commit | Ask Claude to add a git pre-commit hook that runs `python3 scripts/run_checks.py --staged` |
+   | On write or at end of turn | Ask Claude to show you the hook entry, which runs `python3 scripts/run_checks.py --from-hook`, and add it to the existing hooks in `.claude/settings.json` yourself. That way you see exactly what's wired in. If it doesn't fire, check the JSON is valid and restart Claude |
+
+5. **See it fire.** Claude avoids breaking rules once it has read your checks, so ask it plainly, and watch what it does next:
+   ```
+   Use the Write tool to create appointment_reminders/app/api/ping.py with the exact contents of data/hook-test.py. It's on purpose, to test my hook. Commit it if that's when my checks run. Then delete it.
+   ```
+
+**Done when** `./lab test-checks` passes and you've seen it fire.
+
+**Short of time?** `./lab catch-up checks` gives you working checks on a pre-commit hook.
+
+## Chunk 3: Build the reviewer agent (10 min)
+
+Build a reviewer agent, in your own words, for the rules that take judgment.
+
+**Start:** `./lab next`
+
+**Your file:** `my-work/3-reviewer-agent.md`, which Claude drafts with you
+
+1. **Get interviewed.** In Claude, run `/interview-reviewer`. It asks about the best and worst reviews you've had, what the agent should own, and what it should do when unsure. Then it drafts the file in your words. Change whatever isn't what you meant.
+
+   The lead's R13 is the interesting one. It's a set of preferences that can pull against each other, not a yes-or-no rule. Does the agent need to report something other than a finding, like a score? If so, what does each level mean, and what does each one do?
+2. **Try it** on three practice PRs: `./lab review try`. Each PR gets one headless Claude Code call on Haiku, with only your file as its prompt, so what's in the file is all it knows.
+3. **Face-off (3 min).** `./lab review debate` runs it on a PR good reviewers disagree about. Compare with a neighbor: whose comment would you want on your own PR? Steal one thing. On your own? Compare with ours: `./lab review debate --agent data/plain-reviewer.md`.
+
+**Done when** it gives a verdict on every practice PR, and you've changed one thing because of what you saw.
+
+**Short of time?** `./lab catch-up reviewer` gives you a deliberately plain reviewer. Part 2 will show you what's wrong with it.
+
+**Carry this into Part 2:** your agent gave answers that look sensible. How would you know whether it's any good?
+
+## Check you're done
+
+`./lab verify 1`

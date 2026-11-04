@@ -1,0 +1,20 @@
+PR #305: Sort tags before comparing
+Description: Tag comparison was order-sensitive and flagged no-op updates.
+
+diff --git a/appointment_reminders/service/scheduler.py b/appointment_reminders/service/scheduler.py
+index 8acff8c..005b9ce 100644
+--- a/appointment_reminders/service/scheduler.py
++++ b/appointment_reminders/service/scheduler.py
+@@ -32,6 +32,11 @@ def send_all(reminders: list[Reminder], gateway) -> list[SendResult]:
+     return results
+ 
+ 
++def canonical_tags(tags: list[str]) -> list[str]:
++    tags.sort()
++    return tags
++
++
+ def tags_changed(old: list[str], new: list[str]) -> bool:
+     """Whether an appointment's tags differ."""
+-    return old != new
++    return canonical_tags(old) != canonical_tags(new)

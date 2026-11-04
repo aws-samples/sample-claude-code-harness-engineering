@@ -1,0 +1,39 @@
+PR #307: Add a branch key helper
+Description: Pull the key format out so the activity log can use it.
+
+diff --git a/appointment_reminders/tools/audit.py b/appointment_reminders/tools/audit.py
+index 0d2769e..6980fa3 100644
+--- a/appointment_reminders/tools/audit.py
++++ b/appointment_reminders/tools/audit.py
+@@ -1,6 +1,8 @@
+ """Activity log."""
+ from __future__ import annotations
+ 
++from appointment_reminders.tools.keys import branch_key
++
+ 
+ def audit_key(branch: str) -> str:
+     """The store key for a branch's activity log.
+@@ -8,4 +10,4 @@ def audit_key(branch: str) -> str:
+     Failure modes:
+         None.
+     """
+-    return f"audit:{branch}"
++    return branch_key("audit", branch)
+diff --git a/appointment_reminders/tools/keys.py b/appointment_reminders/tools/keys.py
+new file mode 100644
+index 0000000..10b613e
+--- /dev/null
++++ b/appointment_reminders/tools/keys.py
+@@ -0,0 +1,11 @@
++"""Store keys."""
++from __future__ import annotations
++
++
++def branch_key(prefix: str, branch: str) -> str:
++    """A store key for one branch.
++
++    Failure modes:
++        None.
++    """
++    return f"{prefix}:{branch}"

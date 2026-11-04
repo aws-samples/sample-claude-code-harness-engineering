@@ -1,0 +1,31 @@
+PR #204: Add a channel abstraction for reminders
+Description: SMS and push are both funded for next quarter, so this sets up the seam now. Only email for today.
+
+diff --git a/appointment_reminders/service/channels.py b/appointment_reminders/service/channels.py
+new file mode 100644
+index 0000000..bfeaf72
+--- /dev/null
++++ b/appointment_reminders/service/channels.py
+@@ -0,0 +1,22 @@
++"""How reminders reach customers."""
++from __future__ import annotations
++
++from abc import ABC, abstractmethod
++
++from appointment_reminders.service.models import Reminder
++
++
++class Channel(ABC):
++    @abstractmethod
++    def send(self, reminder: Reminder) -> None:
++        """Send one reminder."""
++
++
++class EmailChannel(Channel):
++    def __init__(self, gateway) -> None:
++        self.gateway = gateway
++
++    def send(self, reminder: Reminder) -> None:
++        if not reminder.customer_email:
++            raise ValueError("Reminder has no email address")
++        self.gateway.send(reminder)

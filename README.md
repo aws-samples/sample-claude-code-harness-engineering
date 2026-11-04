@@ -1,11 +1,10 @@
-## My Project
+# Harness Engineering workshop
 
-TODO: Fill this README out!
+**The instructions are in [`guide/part-1.md`](guide/part-1.md) and [`guide/part-2.md`](guide/part-2.md).** They're the same as the workshop pages, so read whichever you prefer.
 
-Be sure to:
+To start, open Claude Code here (`claude`) and run `! ./lab next`, or run `./lab next` in a second terminal. It tells you which file to open for each step.
 
-* Change the title in this README
-* Edit your repository description on GitHub
+Your answers go in `my-work/`. The team's rules are in `docs/team-rules.md`.
 
 ## Security
 
@@ -14,4 +13,3 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
-

@@ -1,0 +1,20 @@
+PR #315: Document the status fetch
+Description: Adding the Failure modes section the team asked for.
+
+diff --git a/appointment_reminders/tools/bookings_client.py b/appointment_reminders/tools/bookings_client.py
+index ffbf3e8..506a9fb 100644
+--- a/appointment_reminders/tools/bookings_client.py
++++ b/appointment_reminders/tools/bookings_client.py
+@@ -35,7 +35,11 @@ def set_tags(client: httpx.Client, appointment_id: str, tags: list[str]) -> None
+ 
+ 
+ def fetch_status(client: httpx.Client, appointment_id: str) -> str | None:
+-    """Fetch an appointment's status."""
++    """Fetch an appointment's status.
++
++    Failure modes:
++        Returns None if the bookings API can't be reached.
++    """
+     try:
+         response = client.get(f"/appointments/{appointment_id}/status", timeout=REQUEST_TIMEOUT_SECONDS)
+         response.raise_for_status()

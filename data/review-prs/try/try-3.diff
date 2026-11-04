@@ -1,0 +1,15 @@
+PR #203: Tidy batch sizes
+Description: Small clean-up.
+
+diff --git a/appointment_reminders/service/settings.py b/appointment_reminders/service/settings.py
+index 7215ea4..517f1ec 100644
+--- a/appointment_reminders/service/settings.py
++++ b/appointment_reminders/service/settings.py
+@@ -8,5 +8,6 @@ RETRY_BACKOFF_SECONDS = 2
+ MAX_SENDS_PER_MINUTE = 120
+ REMINDER_WINDOW_SECONDS = 3600
+ SWEEP_LIMIT = 200
+-BATCH_SIZE = 25
++BATCH_SIZE = 64
++SOME_RATIO = 0.37
+ JITTER = 0.62

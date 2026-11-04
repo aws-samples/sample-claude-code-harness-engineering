@@ -1,0 +1,14 @@
+PR #202: Rename load_customer
+Description: It always created a row anyway.
+
+diff --git a/appointment_reminders/service/records.py b/appointment_reminders/service/records.py
+index bc3b1c1..284e1a7 100644
+--- a/appointment_reminders/service/records.py
++++ b/appointment_reminders/service/records.py
+@@ -33,5 +33,5 @@ class BranchStore:
+         return "region" in settings and "owner" in settings
+ 
+ 
+-def load_customer(db, customer_ref: str) -> dict:
++def ensure_customer(db, customer_ref: str) -> dict:
+     return db.upsert("customers", {"ref": customer_ref})

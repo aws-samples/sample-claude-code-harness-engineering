@@ -1,0 +1,33 @@
+PR #201: Retry webhook delivery
+Description: Branches miss events when their endpoint blips.
+
+diff --git a/appointment_reminders/tools/webhooks.py b/appointment_reminders/tools/webhooks.py
+index 4aabea6..db4b082 100644
+--- a/appointment_reminders/tools/webhooks.py
++++ b/appointment_reminders/tools/webhooks.py
+@@ -1,9 +1,11 @@
+ """Outgoing webhooks to branch systems."""
+ from __future__ import annotations
+ 
++import time
++
+ import httpx
+ 
+-from appointment_reminders.service.settings import REQUEST_TIMEOUT_SECONDS
++from appointment_reminders.service.settings import MAX_ATTEMPTS, REQUEST_TIMEOUT_SECONDS, RETRY_BACKOFF_SECONDS
+ 
+ 
+ def deliver(url: str, event: dict) -> None:
+@@ -12,4 +14,11 @@ def deliver(url: str, event: dict) -> None:
+     Failure modes:
+         Raises httpx.HTTPError if the branch rejects the event or can't be reached.
+     """
+-    httpx.post(url, json=event, timeout=REQUEST_TIMEOUT_SECONDS).raise_for_status()
++    for attempt in range(MAX_ATTEMPTS):
++        try:
++            httpx.post(url, json=event, timeout=REQUEST_TIMEOUT_SECONDS).raise_for_status()
++            return
++        except httpx.TimeoutException:
++            if attempt == MAX_ATTEMPTS - 1:
++                raise
++            time.sleep(RETRY_BACKOFF_SECONDS)

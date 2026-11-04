@@ -1,0 +1,18 @@
+PR #310: Respect the provider's new burst limit
+Description: The provider rejected us twice last week.
+
+diff --git a/appointment_reminders/service/settings.py b/appointment_reminders/service/settings.py
+index 7215ea4..b6ddf37 100644
+--- a/appointment_reminders/service/settings.py
++++ b/appointment_reminders/service/settings.py
+@@ -4,8 +4,8 @@ from __future__ import annotations
+ REQUEST_TIMEOUT_SECONDS = 10
+ MAX_ATTEMPTS = 3
+ RETRY_BACKOFF_SECONDS = 2
+-# Messaging contract: 150 sends a minute. 120 leaves room for one-off messages.
+-MAX_SENDS_PER_MINUTE = 120
++# Messaging contract: 90 sends a minute. 80 leaves room for one-off messages.
++MAX_SENDS_PER_MINUTE = 80
+ REMINDER_WINDOW_SECONDS = 3600
+ SWEEP_LIMIT = 200
+ BATCH_SIZE = 25
