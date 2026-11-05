@@ -1,0 +1,18 @@
+PR #342: Requeue batches when a worker is recycled, safely
+Description: Second try: sending now uses send_once, keyed on the reminder, and the send log comes from nightly_totals.
+
+diff --git a/appointment_reminders/service/worker.py b/appointment_reminders/service/worker.py
+index 994c6b8..5334306 100644
+--- a/appointment_reminders/service/worker.py
++++ b/appointment_reminders/service/worker.py
+@@ -18,7 +18,7 @@ class WorkerRecycled(Exception):
+ async def run_batch(batch, gateway, send_log, queue) -> None:
+     try:
+         for reminder in batch.reminders:
+-            await gateway.send_message(reminder)
+-        await send_log.record_sent(batch.id, batch.size)
++            await gateway.send_once(reminder, key=reminder.id)
+     except WorkerRecycled:
+-        logger.info("worker recycled during batch %s", batch.id)
++        logger.info("worker recycled, requeuing batch %s", batch.id)
++        await queue.put(batch)

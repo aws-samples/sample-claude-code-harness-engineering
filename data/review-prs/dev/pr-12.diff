@@ -1,0 +1,33 @@
+PR #312: Compare scores properly
+Description: Rounding hid a real difference between scores. Drop it, and compare floats the right way in the test.
+
+diff --git a/appointment_reminders/service/risk.py b/appointment_reminders/service/risk.py
+index 609cafc..f0956a4 100644
+--- a/appointment_reminders/service/risk.py
++++ b/appointment_reminders/service/risk.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ 
+ 
+ def late_cancel_score(distance_risk: float, history_risk: float) -> float:
+-    return round(distance_risk + history_risk, 6)
++    return distance_risk + history_risk
+ 
+ 
+ REGIONS = {"US": "United States", "CA": "Canada", "MX": "Mexico"}
+diff --git a/appointment_reminders/tests/test_risk.py b/appointment_reminders/tests/test_risk.py
+index 49d6582..af5990a 100644
+--- a/appointment_reminders/tests/test_risk.py
++++ b/appointment_reminders/tests/test_risk.py
+@@ -1,8 +1,11 @@
+ from __future__ import annotations
+ 
++import pytest
++
+ from appointment_reminders.service.risk import late_cancel_score
+ 
+ 
+ def test_late_cancel_score():
+     score = late_cancel_score(0.1, 0.2)
+-    assert score == 0.3
++    assert score == pytest.approx(0.3)
++    assert late_cancel_score(0.1, 0.2000001) != late_cancel_score(0.1, 0.2)

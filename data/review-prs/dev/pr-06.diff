@@ -1,0 +1,24 @@
+PR #306: Memoize region lookups
+Description: The region table never changes at runtime, and reminder_text calls this for every reminder.
+
+diff --git a/appointment_reminders/service/risk.py b/appointment_reminders/service/risk.py
+index 609cafc..266e538 100644
+--- a/appointment_reminders/service/risk.py
++++ b/appointment_reminders/service/risk.py
+@@ -1,6 +1,8 @@
+ """Late-cancellation risk."""
+ from __future__ import annotations
+ 
++import functools
++
+ 
+ def late_cancel_score(distance_risk: float, history_risk: float) -> float:
+     return round(distance_risk + history_risk, 6)
+@@ -9,6 +11,7 @@ def late_cancel_score(distance_risk: float, history_risk: float) -> float:
+ REGIONS = {"US": "United States", "CA": "Canada", "MX": "Mexico"}
+ 
+ 
++@functools.lru_cache(maxsize=None)
+ def get_region(code: str) -> str:
+     return REGIONS[code]
+ 

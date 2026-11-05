@@ -1,0 +1,16 @@
+PR #346: Explain the database failure
+Description: On-call asked for this after Tuesday.
+
+diff --git a/appointment_reminders/service/startup.py b/appointment_reminders/service/startup.py
+index 93c1b4e..b7bf0a4 100644
+--- a/appointment_reminders/service/startup.py
++++ b/appointment_reminders/service/startup.py
+@@ -20,4 +20,7 @@ def load_settings(env: dict) -> Settings:
+ 
+ 
+ def connect(path: str) -> sqlite3.Connection:
+-    return sqlite3.connect(path)
++    try:
++        return sqlite3.connect(path)
++    except sqlite3.OperationalError as exc:
++        raise DatabaseUnavailable("Connection to the reminders database failed") from exc

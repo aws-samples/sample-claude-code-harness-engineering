@@ -1,0 +1,15 @@
+PR #347: Log branch checks
+Description: Support needs to see which branches failed.
+
+diff --git a/appointment_reminders/service/records.py b/appointment_reminders/service/records.py
+index bc3b1c1..041e01e 100644
+--- a/appointment_reminders/service/records.py
++++ b/appointment_reminders/service/records.py
+@@ -21,6 +21,7 @@ def save_profile(record: CustomerProfile, store) -> None:
+ 
+ 
+ def run_branch_check(check: BranchCheck) -> bool:
++    logger.info("branch check: %s", check)
+     return check.passed
+ 
+ 

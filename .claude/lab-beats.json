@@ -1,0 +1,46 @@
+{
+  "chunks": {
+    "sort": {
+      "label": "Chunk 1 of 6: Sort the rules",
+      "file": "my-work/1-rule-sort.md",
+      "todo": "Read docs/team-rules.md, then put each rule in its home.",
+      "done": "No TODOs left. Then: ./lab next"
+    },
+    "checks": {
+      "label": "Chunk 2 of 6: Build the checks",
+      "file": "my-work/2-checks-plan.md",
+      "todo": "Make the decisions in the plan. Then ask Claude to build them in scripts/checks.py, and add the pre-commit hook.",
+      "done": "./lab test-checks passes. Then: ./lab next"
+    },
+    "reviewer": {
+      "label": "Chunk 3 of 6: Build the reviewer agent",
+      "file": "my-work/3-reviewer-agent.md",
+      "todo": "Run /interview-reviewer in Claude. Then ./lab review try.",
+      "done": "It gives a verdict on every practice PR, and you've changed one thing because of what you saw. Then: ./lab next"
+    },
+    "label": {
+      "label": "Chunk 4 of 6: Label five PRs and design the eval",
+      "file": "my-work/4-gold-labels.md and my-work/5-eval-design.md",
+      "todo": "Label the five PRs and judge the two design PRs, using /explain-pr if it helps. Then answer the questions in 5-eval-design.md.",
+      "done": "No TODOs left in either file. Then: ./lab next"
+    },
+    "eval": {
+      "label": "Chunk 5 of 6: Build the eval, improve the agent",
+      "file": "scripts/score.py (Claude builds it) and my-work/3-reviewer-agent.md",
+      "todo": "./lab review dev. Ask Claude to build score() from your design. Then improve the agent, and try it on R13 with ./lab review design.",
+      "done": "You can name what moved the score most. Then: ./lab next, which freezes a copy of your agent and opens the held-out PRs"
+    },
+    "holdout": {
+      "label": "Chunk 5 of 6, last step: Run the held-out PRs",
+      "file": "nothing to fill in",
+      "todo": "./lab review holdout, then ./lab score holdout. Read each error.",
+      "done": "You've read the errors. Then: ./lab next"
+    },
+    "gate": {
+      "label": "Chunk 6 of 6: Add a human gate",
+      "file": "my-work/6-human-gate.md",
+      "todo": "Answer the questions. Then ask Claude to build them in scripts/gate.py.",
+      "done": "./lab test-gate passes, and you've read human-review-queue.md after ./lab pipeline. That's the end of Part 2."
+    }
+  }
+}

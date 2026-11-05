@@ -1,0 +1,15 @@
+PR #313: Log reminders as they're queued
+Description: We can't tell what went into the queue when something goes wrong.
+
+diff --git a/appointment_reminders/service/queueing.py b/appointment_reminders/service/queueing.py
+index 882f40e..5933188 100644
+--- a/appointment_reminders/service/queueing.py
++++ b/appointment_reminders/service/queueing.py
+@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
+ 
+ 
+ async def queue_reminder(queue, reminder: Reminder) -> None:
++    logger.info("queued %s", reminder)
+     await queue.put(reminder)
+ 
+ 

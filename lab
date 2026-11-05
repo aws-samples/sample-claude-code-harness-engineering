@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""The one command for the labs. Run ./lab with no arguments to see where you are."""
+from __future__ import annotations
+
+import json
+import os
+import runpy
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+os.chdir(Path(__file__).resolve().parent)
+sys.path.insert(0, "scripts")
+from my_work import describe_labels, todos_left  # noqa: E402
+
+STAGE, LOG = Path(".claude/lab-stage"), Path(".claude/lab-log")
+AGENT, FROZEN = Path("my-work/3-reviewer-agent.md"), Path(".claude/frozen-agent.md")
+STARTER = "TODO: don't write this by hand"
+SEALED = ["data/review-prs/lead-labels.csv", "data/review-prs/holdout"]
+CHUNKS: dict[str, dict] = json.loads(Path(".claude/lab-beats.json").read_text())["chunks"]
+ORDER = list(CHUNKS)
+CATCH_UP = {
+    "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"]),
+    "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"]),
+    "eval": ("after-eval", ["scripts/score.py"]),
+    "gate": ("after-gate", ["scripts/gate.py"]),
+}
+HELP = """Move through the lab
+  ./lab                    where you are, and what's left
+  ./lab next               the next chunk
+  ./lab goto CHUNK         jump to any chunk: {chunks}
+  ./lab catch-up CHUNK     take our working version: checks, reviewer, eval, gate
+
+Build and test
+  ./lab test-checks        run your checks against our test cases
+  ./lab test-gate          run your human gate against tricky situations
+  ./lab review SET         run your agent: try, dev, design or holdout
+  ./lab score [holdout]    score the last review
+  ./lab pipeline [dev]     the whole system: agent, then gate"""
+
+
+def current() -> str:
+    stage = STAGE.read_text().strip() if STAGE.exists() else ""
+    return stage if stage in CHUNKS else ""
+
+
+def files_of(chunk: str) -> list[Path]:
+    return [Path(word) for word in CHUNKS[chunk]["file"].split() if word.startswith("my-work/")]
+
+
+def show(chunk: str) -> None:
+    spec = CHUNKS[chunk]
+    print(f"\n{spec['label']}\n")
+    print(f"  Your file:  {spec['file']}")
+    for path in files_of(chunk):
+        left = todos_left(path)
+        if left:
+            print(f"              {left} TODO{'s' if left != 1 else ''} left in {path.name}")
+    print(f"  Do this:    {spec['todo']}")
+    print(f"  Done when:  {spec['done']}\n")
+
+
+def unseal(chunk: str) -> None:
+    """The lead's labels and the held-out PRs wait in a tag until their chunk."""
+    paths = {"eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
+    missing = [path for path in paths if not Path(path).exists()]
+    if missing and subprocess.run(["git", "checkout", "sealed", "--", *missing], capture_output=True).returncode == 0:
+        print(f"Opened: {', '.join(missing)}")
+
+
+def go(chunk: str) -> None:
+    previous = current()
+    if previous:
+        left = sum(todos_left(path) for path in files_of(previous))
+        if left and chunk != previous:
+            print(f"Moving on with {left} TODOs left in {previous}. That's fine: you can come back.")
+    unseal(chunk)
+    if chunk == "eval":
+        print(describe_labels())
+    if chunk in ("holdout", "gate"):
+        freeze()
+    STAGE.write_text(chunk + "\n")
+    with LOG.open("a") as log:
+        log.write(f"{time.time():.0f}\t{chunk}\n")
+    show(chunk)
+
+
+def freeze(quiet: bool = False) -> None:
+    """The held-out PRs are a fair test only if the agent can't change once you've seen them, so they run on a copy.
+
+    Until you've run them, the copy is refreshed each time the held-out PRs open, so an early visit doesn't lock in an old agent."""
+    if Path("results-holdout.json").exists() and FROZEN.exists():
+        if not quiet:
+            print(f"Your agent was frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}, and you've run the held-out PRs with it, so that copy stays.")
+    elif not AGENT.exists() or STARTER in AGENT.read_text():
+        if not quiet:
+            print("Your agent isn't written yet, so there's nothing to freeze. Come back here once it is: ./lab goto holdout")
+    else:
+        shutil.copy(AGENT, FROZEN)
+        print("Your agent is frozen: ./lab review holdout uses a copy made now. Edits to your agent from here on don't change the fair test.")
+
+
+def run(script: str, *args: str) -> int:
+    """Run one of the lab's scripts in this process, as if from the command line, and return its exit code.
+
+    No new process starts, so no command line is built from what you type."""
+    saved_argv, saved_path = sys.argv, sys.path[:]
+    sys.argv = [script, *args]
+    try:
+        runpy.run_path(script, run_name="__main__")
+        return 0
+    except SystemExit as done:
+        if done.code is None or isinstance(done.code, int):
+            return done.code or 0
+        print(done.code, file=sys.stderr)
+        return 1
+    finally:
+        sys.argv, sys.path[:] = saved_argv, saved_path
+
+
+def review(args: list[str]) -> int:
+    if not args or args[0] not in {"try", "dev", "design", "holdout"}:
+        sys.exit("usage: ./lab review try|dev|design|holdout [--agent FILE] [--out FILE]. Your agent is my-work/3-reviewer-agent.md.")
+    which, extra = args[0], args[1:]
+    command = {
+        "try": ["--set", "try", "--out", "results-try.json"],
+        "dev": ["--set", "dev", "--out", "results.json"],
+        "design": ["--set", "design", "--runs", "3", "--out", "results-design.json"],
+        "holdout": ["--set", "holdout", "--out", "results-holdout.json"],
+    }[which]
+    return run("scripts/run_reviewer.py", *command, *extra)
+
+
+def catch_up(chunk: str) -> int:
+    if chunk not in CATCH_UP:
+        sys.exit(f"usage: ./lab catch-up {'|'.join(CATCH_UP)}")
+    tag, paths = CATCH_UP[chunk]
+    for path in map(Path, paths):
+        backup = Path(f"{path}.orig")
+        if path.exists() and not backup.exists():
+            shutil.copy(path, backup)
+    code = subprocess.run(["git", "checkout", tag, "--", *paths]).returncode
+    if code:
+        return code
+    if chunk == "checks":
+        subprocess.run(["git", "config", "core.hooksPath", ".githooks"], check=True)
+    print(f"Replaced with our working version: {', '.join(paths)}. Yours are saved beside them as .orig.")
+    print("Read ours for two minutes, then ./lab next.")
+    return 0
+
+
+def main(args: list[str]) -> int:
+    command = args[0] if args else "status"
+    rest = args[1:]
+    if command == "status":
+        if current():
+            show(current())
+        else:
+            print("\nNo chunk running. Start with ./lab next\n")
+        print("./lab help lists every command.")
+    elif command == "help":
+        print(HELP.format(chunks=" ".join(ORDER)))
+    elif command == "next":
+        now = current()
+        if now == ORDER[-1]:
+            print("That's the last chunk. You're finished when its 'Done when' is true.")
+            return 0
+        go(ORDER[ORDER.index(now) + 1] if now else ORDER[0])
+    elif command == "goto" and rest and rest[0] in CHUNKS:
+        go(rest[0])
+    elif command == "catch-up" and rest:
+        return catch_up(rest[0])
+    elif command == "test-checks":
+        return run("scripts/test_checks.py")
+    elif command == "test-gate":
+        unseal("gate")
+        if not FROZEN.exists():
+            freeze(quiet=True)
+        return run("scripts/test_gate.py")
+    elif command == "review":
+        return review(rest)
+    elif command == "score":
+        which = ["--set", "holdout", "--results", "results-holdout.json"] if rest[:1] == ["holdout"] else [*rest]
+        return run("scripts/eval_reviewer.py", *which)
+    elif command == "pipeline":
+        return run("scripts/review_pipeline.py", "--set", rest[0] if rest else "holdout")
+    else:
+        print(HELP.format(chunks=" ".join(ORDER)))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

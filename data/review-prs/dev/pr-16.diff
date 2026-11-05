@@ -1,0 +1,32 @@
+PR #316: Retry tag updates
+Description: Tag writes time out under load.
+
+diff --git a/appointment_reminders/tools/bookings_client.py b/appointment_reminders/tools/bookings_client.py
+index ffbf3e8..02803ac 100644
+--- a/appointment_reminders/tools/bookings_client.py
++++ b/appointment_reminders/tools/bookings_client.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ 
+ import httpx
+ 
+-from appointment_reminders.service.settings import REQUEST_TIMEOUT_SECONDS
++from appointment_reminders.service.settings import MAX_ATTEMPTS, REQUEST_TIMEOUT_SECONDS
+ 
+ 
+ def set_contact_preference(client: httpx.Client, customer_ref: str, channel: str) -> None:
+@@ -31,7 +31,14 @@ def set_tags(client: httpx.Client, appointment_id: str, tags: list[str]) -> None
+     Failure modes:
+         Raises httpx.HTTPError if the bookings API rejects the call or can't be reached.
+     """
+-    client.put(f"/appointments/{appointment_id}/tags", json={"tags": tags}, timeout=REQUEST_TIMEOUT_SECONDS).raise_for_status()
++    # PUT replaces the whole tag list, so sending it twice ends in the same state.
++    for attempt in range(MAX_ATTEMPTS):
++        try:
++            client.put(f"/appointments/{appointment_id}/tags", json={"tags": tags}, timeout=REQUEST_TIMEOUT_SECONDS).raise_for_status()
++            return
++        except httpx.TimeoutException:
++            if attempt == MAX_ATTEMPTS - 1:
++                raise
+ 
+ 
+ def fetch_status(client: httpx.Client, appointment_id: str) -> str | None:

@@ -1,0 +1,18 @@
+PR #343: Normalize branch settings on read
+Description: Older branches have mixed-case keys.
+
+diff --git a/appointment_reminders/service/records.py b/appointment_reminders/service/records.py
+index bc3b1c1..de790e9 100644
+--- a/appointment_reminders/service/records.py
++++ b/appointment_reminders/service/records.py
+@@ -30,6 +30,10 @@ class BranchStore:
+ 
+     def validate_settings(self, branch: str) -> bool:
+         settings = self.db.fetch_settings(branch)
++        lowered = {key.lower(): value for key, value in settings.items()}
++        if lowered != settings:
++            self.db.save_settings(branch, lowered)
++            settings = lowered
+         return "region" in settings and "owner" in settings
+ 
+ 

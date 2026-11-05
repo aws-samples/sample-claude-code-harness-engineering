@@ -1,0 +1,51 @@
+PR #304: Internal sentinel for empty pages
+Description: The bookings API can now end with an empty page as well as a null cursor.
+
+diff --git a/appointment_reminders/tools/bookings_client.py b/appointment_reminders/tools/bookings_client.py
+index ffbf3e8..33f69a4 100644
+--- a/appointment_reminders/tools/bookings_client.py
++++ b/appointment_reminders/tools/bookings_client.py
+@@ -44,15 +44,23 @@ def fetch_status(client: httpx.Client, appointment_id: str) -> str | None:
+     return response.json()["status"]
+ 
+ 
++class EndOfPages(Exception):
++    pass
++
++
+ def next_page(client: httpx.Client, cursor: str | None) -> dict:
+     """Fetch one page of appointments.
+ 
+     Failure modes:
+         Raises httpx.HTTPError if the bookings API rejects the call or can't be reached.
++        Raises EndOfPages on an empty page.
+     """
+     response = client.get("/appointments", params={"cursor": cursor}, timeout=REQUEST_TIMEOUT_SECONDS)
+     response.raise_for_status()
+-    return response.json()
++    body = response.json()
++    if not body["items"]:
++        raise EndOfPages
++    return body
+ 
+ 
+ def all_items(client: httpx.Client):
+@@ -62,9 +70,12 @@ def all_items(client: httpx.Client):
+         Raises httpx.HTTPError as next_page does.
+     """
+     cursor = None
+-    while True:
+-        body = next_page(client, cursor)
+-        yield from body["items"]
+-        cursor = body["next"]
+-        if cursor is None:
+-            return
++    try:
++        while True:
++            body = next_page(client, cursor)
++            yield from body["items"]
++            cursor = body["next"]
++            if cursor is None:
++                return
++    except EndOfPages:
++        return
