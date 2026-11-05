@@ -26,21 +26,21 @@ Build the eval, use it to improve your reviewer, and finish with one fair test o
 
 **Start:** `./lab next`
 
-**Your file:** `my-work/3-reviewer-agent.md`, and Claude builds `scripts/eval_reviewer.py`
+**Your file:** `my-work/3-reviewer-agent.md`, and Claude builds `scripts/score.py`
 
 1. **Run the agent on all sixteen labeled PRs,** your five and the lead's eleven: `./lab review dev`. It takes about a minute.
-2. **Build the scorer with Claude.** The file already loads the labels and shows where you and the lead differ:
+2. **Build the scorer with Claude.** `./lab score` already loads the labels and shows where you and the lead differ, so `score()` is all that's left:
    ```
-   Read my-work/5-eval-design.md and build score() in scripts/eval_reviewer.py. Then run ./lab score --results data/eval-fixtures/always-approves.json, and the same with flags-everything.json, and show me that neither looks good.
+   Read my-work/5-eval-design.md and build score() in scripts/score.py. Then run ./lab score --results data/eval-fixtures/always-approves.json, and the same with flags-everything.json, and show me that neither looks good.
    ```
 3. **Get your baseline:** `./lab score`. Write it in `my-work/notes.md`. A perfect score first time is a reason to check your scorer and your labels.
 4. **Improve the agent.** Let Claude read the misses, change the agent and rerun. Your job is to stay honest:
    - **Read every change.** A line naming a specific PR is a cheat sheet, not a fix.
    - **Run it twice.** Answers vary. Is that change signal or noise?
-   - **Ask what the agent can't see.** If it missed what you caught, how did you catch it?
+   - **Ask what the agent can't see.** If it missed what you caught, how did you catch it? The agent's `tools:` line decides: blank means only the PR, and `Read, Grep, Glob` gives it a copy of the code.
    - **Is the label wrong?** Sometimes the agent is right, and you get to change your mind.
 5. **Try it on R13 (3 min).** `./lab review design` runs your agent three times on each design PR. There's no answer key, so ask: is it consistent? Does it treat the two PRs differently? Did your way of reporting R13 help? Change it and rerun if not.
-6. **Final 3 minutes, the fair test.** Eight PRs have been hidden from everyone. Did it learn the rules, or just these sixteen? `./lab next` comes first, because it freezes your agent. Changing the agent after you've seen these PRs would spoil the test.
+6. **Final 3 minutes, the fair test.** Eight PRs have been hidden from everyone. Did it learn the rules, or just these sixteen? `./lab next` comes first: it freezes a copy of your agent, and the held-out run always uses that copy. Changing the agent after you've seen these PRs would spoil the test.
    ```bash
    ./lab next
    ./lab review holdout
@@ -62,9 +62,9 @@ Decide when a person still needs to look at a PR, and build that into the pipeli
 
 1. **Read `data/review-prs/holdout/pr-45.diff`, and what your agent said about it.** Suppose a PR did talk your agent out of raising an alarm. What does that mean for who should decide?
 2. **Answer the questions in your file.** When should a person look? How would you assess that? Who gets it?
-3. **Build it with Claude.** There are two pieces. `alert_human(reason, summary)` is a tool your agent can call. It alerts nobody, since we aren't live. `scripts/human_gate.py` then decides where each PR goes: `merge`, `author` or `human`.
+3. **Build it with Claude.** There are two pieces. `alert_human(reason, summary)` is a tool your agent can call. It alerts nobody, since we aren't live. `route()` in `scripts/gate.py` then decides where each PR goes: `merge`, `author` or `human`.
    ```
-   Read my-work/6-human-gate.md. Build it: tell my agent when to call alert_human, and replace route() in scripts/human_gate.py. Get ./lab test-gate passing.
+   Read my-work/6-human-gate.md. Build it: tell my agent when to call alert_human, and replace route() in scripts/gate.py. Get ./lab test-gate passing.
    ```
 4. **Run the whole system:** `./lab pipeline`. Anything routed to a person lands in `human-review-queue.md`. Would you know what to do from what's in there? Is the number of PRs right?
 
@@ -74,7 +74,7 @@ Decide when a person still needs to look at a PR, and build that into the pipeli
 
 ## Check you're done
 
-`./lab verify 2`, then `./lab off`.
+Ask Claude: `Am I done with Part 2?`
 
 ## Extension: does a stronger model review better? (optional, about 15 min)
 

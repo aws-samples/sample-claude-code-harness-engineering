@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -27,8 +28,9 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)  # paths are repo-relative wherever this is run from
 
 AGENT = Path("my-work/3-reviewer-agent.md")
+FROZEN = Path(".claude/frozen-agent.md")  # ./lab next copies your agent here when the held-out run opens
 MODEL_ALIASES = ("haiku", "sonnet", "opus", "fable")
-MODEL_ID = re.compile(r"claude-[a-z0-9][a-z0-9.-]{0,62}")  # e.g. claude-sonnet-5-5
+MODEL_ID = re.compile(r"(?:[a-z]{2,4}\.)?(?:anthropic\.)?claude-[a-z0-9][a-z0-9.-]{0,62}(?::[0-9]{1,3})?")  # claude-sonnet-5-5, or Bedrock's us.anthropic.claude-...-v1:0
 READ_TOOLS = ("Read", "Grep", "Glob")  # the lab's two modes: no tools, or these
 ALERT_TOOL = "mcp__gate__alert_human"
 TIMEOUT_SECONDS = 180
@@ -42,7 +44,7 @@ def pick_model(requested: str) -> str:
             return alias
     if MODEL_ID.fullmatch(requested):
         return requested
-    raise SystemExit(f"LAB_REVIEW_MODEL={requested!r} isn't a model name. Use one of {', '.join(MODEL_ALIASES)}, or a full id like claude-sonnet-5-5.")
+    raise SystemExit(f"LAB_REVIEW_MODEL={requested!r} isn't a model name. Use one of {', '.join(MODEL_ALIASES)}, or a full id like claude-sonnet-5-5 or a Bedrock id.")
 
 
 MODEL = pick_model(os.environ.get("LAB_REVIEW_MODEL", "haiku"))
@@ -148,8 +150,8 @@ def blocked(pr_set: str, chunk: str) -> str | None:
     """Why this set is still closed. One command opens it: these only stop you spoiling your own measurement by accident."""
     if pr_set in ("dev", "design") and chunk in ("sort", "checks", "reviewer", "label"):
         return "Hold on: running the agent on these before you've labeled them lets its answers steer yours. To go ahead anyway: ./lab goto eval"
-    if pr_set == "holdout" and chunk and chunk not in ("holdout", "gate"):
-        return "Hold on: these are your fair test, so the agent gets frozen first. When you're ready: ./lab goto holdout"
+    if pr_set == "holdout" and not Path("data/review-prs/holdout").exists():
+        return "Hold on: these are your fair test, so your agent gets frozen first. When you're ready: ./lab goto holdout"
     return None
 
 
@@ -157,7 +159,7 @@ def pr_paths(pr_set: str, only: str) -> list[Path]:
     paths = sorted(Path("data/review-prs", pr_set).glob("*.diff"))
     if only:
         return [p for p in paths if p.stem in only.split(",")]
-    return [p for p in paths if p.stem != "debate"]
+    return paths
 
 
 def check_agent(agent: Path) -> None:
@@ -176,13 +178,17 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=1, help="review each PR this many times, to see how much answers vary")
     parser.add_argument("--only", default="", help="comma-separated PR names")
     parser.add_argument("--out", default="results.json")
-    parser.add_argument("--agent", default=str(AGENT), help="agent file, if you want to try another one")
+    parser.add_argument("--agent", default="", help="agent file, if you want to try another one. The held-out set uses your frozen agent unless you give one")
     args = parser.parse_args()
     reason = blocked(args.set, chunk_now())
     if reason:
         raise SystemExit(reason)
-    agent = Path(args.agent)
+    agent = Path(args.agent) if args.agent else FROZEN if args.set == "holdout" else AGENT
+    if agent == FROZEN and not FROZEN.exists():
+        raise SystemExit("Your agent hasn't been frozen yet. Once my-work/3-reviewer-agent.md is written: ./lab goto holdout")
     check_agent(agent)
+    if agent == FROZEN:
+        print(f"Using your agent as it was frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}, for a fair test.")
     paths = pr_paths(args.set, args.only)
     if not paths:
         raise SystemExit(f"No PRs here for {args.set} {args.only}. If this set isn't open yet: ./lab goto {'holdout' if args.set == 'holdout' else 'eval'}")

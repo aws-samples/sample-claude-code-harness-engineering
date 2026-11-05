@@ -1,9 +1,4 @@
-#!/usr/bin/env python3
-"""Decides where a reviewed PR goes. Build this with Claude, from my-work/6-human-gate.md.
-
-The agent can ask for a person with its alert_human tool, but a request is only a request: this code decides.
-Think about what the agent can't be trusted to do for itself.
-"""
+"""What the gate gets for each PR: the PR itself, and what the agent said. You don't need to change this file."""
 from __future__ import annotations
 
 import re
@@ -36,11 +31,3 @@ def load_pr(path: Path) -> Pr:
     added = [line for line in text.splitlines() if line.startswith("+") and not line.startswith("+++")]
     return Pr(path.stem, title.group(1) if title else "", description.group(1) if description else "",
               sorted(set(re.findall(r"^(?:\+\+\+ b|--- a)/(.*)$", text, re.MULTILINE))), len(added), text)
-
-
-def route(pr: Pr, review: Review) -> tuple[str, str]:
-    """Return where the PR goes, "merge", "author" or "human", and why."""
-    # TODO: this is the naive version. Replace it with the gate you designed.
-    if review.verdict == "request_changes":
-        return "author", "the agent asked for changes"
-    return "merge", "the agent approved"

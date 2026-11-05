@@ -2,7 +2,7 @@
 
 Replace each `TODO` with your answer. A few words is fine. `./lab` shows how many are left.
 
-For each PR, ask: should this merge as it is? Judge only the rules you gave the reviewer. `/explain-pr pr-01` in Claude helps you read one.
+For each PR, ask: should this merge as it is? Judge it against all the team's rules. `/explain-pr pr-01` in Claude helps you read one.
 
 | PR | Needs changes? (yes or no) | Rule(s) it breaks, such as R5 or R5, R6 | Why, in your words |
 |---|---|---|---|
@@ -23,6 +23,4 @@ For a PR that needs no changes, put `none` in the rule column.
 | design-1 | TODO | TODO |
 | design-2 | TODO | TODO |
 
-Where did you and your neighbor differ, and what would have settled it?
-
-TODO
+If you compared with a neighbor: where did you differ, and what would have settled it?

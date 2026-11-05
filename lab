@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -13,33 +13,32 @@ from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parent)
 sys.path.insert(0, "scripts")
-from my_work import sorted_rules, todos_left, unclear_homes  # noqa: E402
+from my_work import describe_labels, todos_left  # noqa: E402
 
 STAGE, LOG = Path(".claude/lab-stage"), Path(".claude/lab-log")
-PLAN = Path("my-work/2-checks-plan.md")
+AGENT, FROZEN = Path("my-work/3-reviewer-agent.md"), Path(".claude/frozen-agent.md")
+STARTER = "TODO: don't write this by hand"
 SEALED = ["data/review-prs/lead-labels.csv", "data/review-prs/holdout"]
 CHUNKS: dict[str, dict] = json.loads(Path(".claude/lab-beats.json").read_text())["chunks"]
 ORDER = list(CHUNKS)
 CATCH_UP = {
-    "checks": ("after-checks", ["scripts/run_checks.py", ".githooks/pre-commit", "my-work/2-checks-plan.md"]),
+    "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"]),
     "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"]),
-    "eval": ("after-eval", ["scripts/eval_reviewer.py"]),
-    "gate": ("after-gate", ["scripts/human_gate.py"]),
+    "eval": ("after-eval", ["scripts/score.py"]),
+    "gate": ("after-gate", ["scripts/gate.py"]),
 }
 HELP = """Move through the lab
   ./lab                    where you are, and what's left
   ./lab next               the next chunk
   ./lab goto CHUNK         jump to any chunk: {chunks}
   ./lab catch-up CHUNK     take our working version: checks, reviewer, eval, gate
-  ./lab off                turn the lab coach off
 
 Build and test
   ./lab test-checks        run your checks against our test cases
   ./lab test-gate          run your human gate against tricky situations
-  ./lab review SET         run your agent: try, debate, dev, design or holdout
+  ./lab review SET         run your agent: try, dev, design or holdout
   ./lab score [holdout]    score the last review
-  ./lab pipeline [dev]     the whole system: agent, then gate
-  ./lab verify 1|2         check that part 1 or 2 is finished"""
+  ./lab pipeline [dev]     the whole system: agent, then gate"""
 
 
 def current() -> str:
@@ -63,68 +62,6 @@ def show(chunk: str) -> None:
     print(f"  Done when:  {spec['done']}\n")
 
 
-PLAN_TEMPLATE = """# 2. Plan the checks
-
-Replace each `TODO` with your decision, then ask Claude to build it. `./lab` shows how many are left.
-
-## When do the checks run?
-
-Pick one: on every write, on commit, at the end of Claude's turn, or something else. Say why.
-
-TODO
-
-## What does each check do?
-
-Your rules and reasons came from your sort. For each: how bad is a miss (high, medium, low)? Does it block or warn? Does it look at new code only, or all of it?
-
-| Rule | Your reason | How bad is a miss? | Block or warn | New code or all |
-|---|---|---|---|---|
-{table}
-
-## One near miss
-
-Something that looks like a violation but must not fire:
-
-TODO
-
-## Three tests for your plan
-
-There's no single right answer, but a good plan passes these:
-
-1. A secret is caught before it reaches git history.
-2. A block tells whoever hit it how to fix it.
-3. Old debt doesn't block an unrelated edit, unless you chose that on purpose.
-"""
-NO_RULES_YET = "| none yet: put some rules under check or both in my-work/1-rule-sort.md, then run ./lab goto checks | | | | |"
-
-
-def write_plan() -> None:
-    """Carry the rules sorted as check or both into the plan, keeping anything already written there."""
-    for rule in unclear_homes():
-        print(f"Couldn't read the home you gave {rule} in your sort. Use check, reviewer, both or neither.")
-    rows = {rule: f"| {rule} | {why} | TODO | TODO | TODO |" for rule, why in sorted_rules("check", "both").items()}
-    if not PLAN.exists():
-        PLAN.write_text(PLAN_TEMPLATE.format(table="\n".join(rows.values()) or NO_RULES_YET))
-        return
-    text = PLAN.read_text()
-    if not todos_left(PLAN):
-        return  # a finished plan, theirs or ours, stays as it is
-    missing = [row for rule, row in rows.items() if not re.search(rf"^\|\s*{rule}\s*\|", text, re.MULTILINE)]
-    if not missing:
-        return
-    if NO_RULES_YET in text:
-        PLAN.write_text(text.replace(NO_RULES_YET, "\n".join(missing)))
-    else:
-        last = table_rows_end(text)
-        PLAN.write_text(text[:last] + "\n".join(missing) + "\n" + text[last:])
-    print(f"Added to your plan from your sort: {', '.join(row.split()[1] for row in missing)}")
-
-
-def table_rows_end(text: str) -> int:
-    """Where the plan's table ends, so that new rows can go after the last one."""
-    return max((match.end() for match in re.finditer(r"^\|.*\|\n", text, re.MULTILINE)), default=len(text))
-
-
 def unseal(chunk: str) -> None:
     """The lead's labels and the held-out PRs wait in a tag until their chunk."""
     paths = {"eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
@@ -139,26 +76,56 @@ def go(chunk: str) -> None:
         left = sum(todos_left(path) for path in files_of(previous))
         if left and chunk != previous:
             print(f"Moving on with {left} TODOs left in {previous}. That's fine: you can come back.")
-    if chunk == "checks":
-        write_plan()
     unseal(chunk)
+    if chunk == "eval":
+        print(describe_labels())
+    if chunk in ("holdout", "gate"):
+        freeze()
     STAGE.write_text(chunk + "\n")
     with LOG.open("a") as log:
         log.write(f"{time.time():.0f}\t{chunk}\n")
     show(chunk)
 
 
-def run(*command: str) -> int:
-    return subprocess.run([sys.executable, *command]).returncode
+def freeze(quiet: bool = False) -> None:
+    """The held-out PRs are a fair test only if the agent can't change once you've seen them, so they run on a copy.
+
+    Until you've run them, the copy is refreshed each time the held-out PRs open, so an early visit doesn't lock in an old agent."""
+    if Path("results-holdout.json").exists() and FROZEN.exists():
+        if not quiet:
+            print(f"Your agent was frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}, and you've run the held-out PRs with it, so that copy stays.")
+    elif not AGENT.exists() or STARTER in AGENT.read_text():
+        if not quiet:
+            print("Your agent isn't written yet, so there's nothing to freeze. Come back here once it is: ./lab goto holdout")
+    else:
+        shutil.copy(AGENT, FROZEN)
+        print("Your agent is frozen: ./lab review holdout uses a copy made now. Edits to your agent from here on don't change the fair test.")
+
+
+def run(script: str, *args: str) -> int:
+    """Run one of the lab's scripts in this process, as if from the command line, and return its exit code.
+
+    No new process starts, so no command line is built from what you type."""
+    saved_argv, saved_path = sys.argv, sys.path[:]
+    sys.argv = [script, *args]
+    try:
+        runpy.run_path(script, run_name="__main__")
+        return 0
+    except SystemExit as done:
+        if done.code is None or isinstance(done.code, int):
+            return done.code or 0
+        print(done.code, file=sys.stderr)
+        return 1
+    finally:
+        sys.argv, sys.path[:] = saved_argv, saved_path
 
 
 def review(args: list[str]) -> int:
-    if not args or args[0] not in {"try", "debate", "dev", "design", "holdout"}:
-        sys.exit("usage: ./lab review try|debate|dev|design|holdout [--agent FILE] [--out FILE]. Your agent is my-work/3-reviewer-agent.md.")
+    if not args or args[0] not in {"try", "dev", "design", "holdout"}:
+        sys.exit("usage: ./lab review try|dev|design|holdout [--agent FILE] [--out FILE]. Your agent is my-work/3-reviewer-agent.md.")
     which, extra = args[0], args[1:]
     command = {
         "try": ["--set", "try", "--out", "results-try.json"],
-        "debate": ["--set", "try", "--only", "debate", "--out", "results-debate.json"],
         "dev": ["--set", "dev", "--out", "results.json"],
         "design": ["--set", "design", "--runs", "3", "--out", "results-design.json"],
         "holdout": ["--set", "holdout", "--out", "results-holdout.json"],
@@ -169,8 +136,6 @@ def review(args: list[str]) -> int:
 def catch_up(chunk: str) -> int:
     if chunk not in CATCH_UP:
         sys.exit(f"usage: ./lab catch-up {'|'.join(CATCH_UP)}")
-    if chunk == "reviewer" and current() == "holdout":
-        sys.exit("Your agent is frozen for the held-out run. To change it: ./lab next")
     tag, paths = CATCH_UP[chunk]
     for path in map(Path, paths):
         backup = Path(f"{path}.orig")
@@ -194,24 +159,25 @@ def main(args: list[str]) -> int:
             show(current())
         else:
             print("\nNo chunk running. Start with ./lab next\n")
+        print("./lab help lists every command.")
+    elif command == "help":
         print(HELP.format(chunks=" ".join(ORDER)))
     elif command == "next":
         now = current()
         if now == ORDER[-1]:
-            print("That's the last chunk. Finish with: ./lab verify 2")
+            print("That's the last chunk. You're finished when its 'Done when' is true.")
             return 0
         go(ORDER[ORDER.index(now) + 1] if now else ORDER[0])
     elif command == "goto" and rest and rest[0] in CHUNKS:
         go(rest[0])
     elif command == "catch-up" and rest:
         return catch_up(rest[0])
-    elif command == "off":
-        STAGE.unlink(missing_ok=True)
-        print("Lab coach off. Claude Code is back to normal.")
     elif command == "test-checks":
         return run("scripts/test_checks.py")
     elif command == "test-gate":
         unseal("gate")
+        if not FROZEN.exists():
+            freeze(quiet=True)
         return run("scripts/test_gate.py")
     elif command == "review":
         return review(rest)
@@ -220,8 +186,6 @@ def main(args: list[str]) -> int:
         return run("scripts/eval_reviewer.py", *which)
     elif command == "pipeline":
         return run("scripts/review_pipeline.py", "--set", rest[0] if rest else "holdout")
-    elif command == "verify" and rest:
-        return run("scripts/validate_agent.py", "--part", rest[0])
     else:
         print(HELP.format(chunks=" ".join(ORDER)))
         return 1

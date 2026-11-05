@@ -7,7 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from human_gate import Review, load_pr, route  # noqa: E402
+from gate import route  # noqa: E402
+from pr_data import Review, load_pr  # noqa: E402
 
 PRS = ROOT / "data/review-prs"
 if not (PRS / "holdout").exists():
