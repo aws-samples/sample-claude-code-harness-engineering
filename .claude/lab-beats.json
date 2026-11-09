@@ -9,7 +9,7 @@
     "checks": {
       "label": "Chunk 2 of 6: Build the checks",
       "file": "my-work/2-checks-plan.md",
-      "todo": "Make the decisions in the plan. Then ask Claude to build them in scripts/checks.py, and add the pre-commit hook.",
+      "todo": "Ask Claude to copy your check and both rules into the plan, and make the decisions. Then ask Claude to build them in scripts/checks.py, and add the pre-commit hook.",
       "done": "./lab test-checks passes. Then: ./lab next"
     },
     "reviewer": {
@@ -21,7 +21,7 @@
     "label": {
       "label": "Chunk 4 of 6: Label five PRs and design the eval",
       "file": "my-work/4-gold-labels.md and my-work/5-eval-design.md",
-      "todo": "Label the five PRs and judge the two design PRs, using /explain-pr if it helps. Then answer the questions in 5-eval-design.md.",
+      "todo": "Label the five PRs and judge the two design PRs, with /explain-pr. Then run /design-eval.",
       "done": "No TODOs left in either file. Then: ./lab next"
     },
     "eval": {
@@ -38,8 +38,8 @@
     },
     "gate": {
       "label": "Chunk 6 of 6: Add a human gate",
-      "file": "my-work/6-human-gate.md",
-      "todo": "Answer the questions. Then ask Claude to build them in scripts/gate.py.",
+      "file": "my-work/6-human-gate.md, and my-work/7-gate-agent.md if you choose a specialist",
+      "todo": "Read docs/human-review.md and decide who checks each preference. Then ask Claude to build it.",
       "done": "./lab test-gate passes, and you've read human-review-queue.md after ./lab pipeline. That's the end of Part 2."
     }
   }

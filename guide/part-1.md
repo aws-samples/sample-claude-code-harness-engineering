@@ -44,16 +44,18 @@ Turn the rules that can be checked into one script that runs on every commit, an
 
 **Your file:** `my-work/2-checks-plan.md`
 
-1. **Make the decisions in the plan.** Ask Claude to copy in the rules you sorted as `check` or `both`. Then, for each one: does it block the commit, or warn? And for all of them: do they look at new code only, or all of it? `app/api/health.py` already breaks R7, so think about whether a typo fix there should be stopped.
-2. **Hand it to Claude:**
+1. **Get your rules into the plan.** Ask Claude: `Copy the rules I sorted as check or both in my-work/1-rule-sort.md into my-work/2-checks-plan.md.`
+2. **Make the decisions.** For each rule: does it block the commit, or warn? And for all of them: do they look at new code only, or all of it?
+3. **Hand it to Claude:**
    ```
    Read my-work/2-checks-plan.md. Tell me if anything looks wrong, then build it in scripts/checks.py, get ./lab test-checks passing, and add a git pre-commit hook that runs python3 scripts/run_checks.py --staged.
    ```
-3. **Test it.** `./lab test-checks` tries your checks on cases we've written, including near misses that must not fire. Ask Claude to add your near miss to `data/check-fixtures.json` too.
+   `./lab test-checks` tries your checks on cases we've written, including near misses that must not fire.
 4. **See it fire.** Claude avoids breaking rules once it has read your checks, so ask it plainly, and watch what it does next:
    ```
    Create appointment_reminders/app/api/ping.py with the exact contents of data/hook-test.py, and commit it. It's on purpose, to test my hook. Then delete it.
    ```
+5. **Feel the other choice.** `app/api/health.py` already breaks R7. Ask Claude to fix one word in its docstring and commit it, then to switch `SCOPE` in `scripts/checks.py` to the other value and do it again. Which would your team put up with? Keep the one you'd choose.
 
 **Done when** `./lab test-checks` passes. Seeing your hook stop a commit is the reward.
 
@@ -67,7 +69,7 @@ Build a reviewer agent, in your own words, for the rules that take judgment.
 
 **Your file:** `my-work/3-reviewer-agent.md`, which Claude drafts with you
 
-1. **Get interviewed.** In Claude, run `/interview-reviewer`. It asks about the best and worst reviews you've had, what the agent should own, what it should do when unsure, and how to handle R13. Then it drafts the file in your words. Change whatever isn't what you meant.
+1. **Get interviewed.** In Claude, run `/interview-reviewer`. It asks what the agent should own, what it should do when unsure, and how to handle R13. Then it drafts the file in your words. Change whatever isn't what you meant.
 
    The lead's R13 is the interesting one. It's a set of preferences that can pull against each other, not a yes-or-no rule. Does the agent need to report something other than a finding, like a score? If so, what does each level mean, and what does each one do?
 2. **Try it** on four practice PRs: `./lab review try`. Each PR gets one headless Claude Code call on Haiku, with only your file as its prompt, so what's in the file is all it knows. The last one, `debate`, is a PR good reviewers disagree about. Compare your agent's comment on it with a neighbor's: whose would you want on your own PR? Steal one thing. On your own? Compare with ours: `./lab review try --agent data/plain-reviewer.md --out results-plain.json`.

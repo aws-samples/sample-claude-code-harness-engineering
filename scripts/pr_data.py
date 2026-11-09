@@ -22,6 +22,7 @@ class Review:
     findings: list[dict] = field(default_factory=list)
     alerts: list[dict] = field(default_factory=list)  # what the agent sent to alert_human: {"reason", "summary"}
     error: str = ""  # why the agent failed, if it did
+    specialist: dict | None = None  # the specialist gate agent's answer, if you have one: {"needs_human": True, False or None if it failed, "reason"}
 
 
 def load_pr(path: Path) -> Pr:

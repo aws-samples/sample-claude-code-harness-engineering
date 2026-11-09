@@ -28,9 +28,10 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)  # paths are repo-relative wherever this is run from
 
 AGENT = Path("my-work/3-reviewer-agent.md")
+GATE_AGENT = Path("my-work/7-gate-agent.md")  # the specialist gate agent, if you chose one
 FROZEN = Path(".claude/frozen-agent.md")  # ./lab next copies your agent here when the held-out run opens
 MODEL_ALIASES = ("haiku", "sonnet", "opus", "fable")
-MODEL_ID = re.compile(r"(?:[a-z]{2,4}\.)?(?:anthropic\.)?claude-[a-z0-9][a-z0-9.-]{0,62}(?::[0-9]{1,3})?")  # claude-sonnet-5-5, or Bedrock's us.anthropic.claude-...-v1:0
+MODEL_ID = re.compile(r"(?:[a-z]{2,6}\.)?(?:anthropic\.)?claude-[a-z0-9][a-z0-9.-]{0,62}(?::[0-9]{1,3})?")  # claude-sonnet-5-5, or Bedrock's global.anthropic.claude-sonnet-5-5
 READ_TOOLS = ("Read", "Grep", "Glob")  # the lab's two modes: no tools, or these
 ALERT_TOOL = "mcp__gate__alert_human"
 TIMEOUT_SECONDS = 180
@@ -48,6 +49,23 @@ def pick_model(requested: str) -> str:
 
 
 MODEL = pick_model(os.environ.get("LAB_REVIEW_MODEL", "haiku"))
+
+
+def settings_env() -> dict[str, str]:
+    """The `env` blocks of Claude Code's settings files, merged in its order: yours, then the project's, then local, with later ones winning.
+
+    The reviewer runs with no settings files of its own, so this is how a setup such as Bedrock reaches it.
+    Only `env` carries over: no hooks, permissions or plugins."""
+    user_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    merged: dict[str, str] = {}
+    for path in (user_dir / "settings.json", ROOT / ".claude/settings.json", ROOT / ".claude/settings.local.json"):
+        try:
+            env = json.loads(path.read_text()).get("env") or {}
+        except (OSError, ValueError, AttributeError):
+            continue  # missing, unreadable or not a settings file: nothing to carry over
+        if isinstance(env, dict):
+            merged.update({str(key): str(value) for key, value in env.items()})
+    return merged
 
 
 def system_prompt(agent: Path) -> str:
@@ -75,30 +93,40 @@ def code_copy() -> str:
     return copy
 
 
-def last_verdict(text: str) -> dict:
-    """The last JSON object in the reply with a verdict. Quoted code in the prose can hold braces too."""
+def last_json(text: str, key: str = "verdict") -> dict:
+    """The last JSON object in the reply with this key. Quoted code in the prose can hold braces too."""
     decoder = json.JSONDecoder()
     for start in reversed([match.start() for match in re.finditer(r"\{", text)]):
         try:
             found = decoder.raw_decode(text[start:])[0]
         except ValueError:
             continue
-        if isinstance(found, dict) and "verdict" in found:
+        if isinstance(found, dict) and key in found:
             return found
-    raise ValueError("no JSON object with a verdict")
+    raise ValueError(f"no JSON object with {key!r}")
 
 
-def show(name: str, answer: dict) -> None:
+def pr_summary(path: Path) -> str:
+    """What the PR says it does, and where to read it."""
+    lines = path.read_text().splitlines()
+    title = lines[0].split(": ", 1)[-1] if lines else ""
+    description = lines[1].removeprefix("Description: ") if len(lines) > 1 else ""
+    return f"PR: {title}. {description} ({path})"
+
+
+def show(name: str, answer: dict, path: Path | None = None) -> None:
     """One review, with every field the agent reported, whatever shape you designed."""
     extras = {key: value for key, value in answer.items() if key not in ("verdict", "findings", "cost", "error")}
     print(f"{name}  {answer['verdict'] or 'FAILED: ' + answer.get('error', '')}{'  ' + json.dumps(extras) if extras else ''}")
+    if path:
+        print(f"    {pr_summary(path)}")
     for finding in answer["findings"]:
         more = " ".join(f"{key}={value}" for key, value in finding.items() if key not in ("rule", "why"))
         print(f"    {finding.get('rule')}{' ' + more if more else ''}: {finding.get('why', '')}")
 
 
-def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None = None) -> dict:
-    """Return the agent's verdict, or {"verdict": None, ...} when the call or its JSON failed.
+def run_claude(diff: str, system: str, tools: str, cwd: str, alert_log: str | None = None) -> dict:
+    """One headless Claude call. Returns claude's JSON reply, or {"error": ...} when the call failed.
 
     The claude command line is fixed text. Everything that changes goes in files instead: the system prompt, a
     settings file with the model and the tools it may use, and the MCP config. The diff goes in on stdin. So no
@@ -106,7 +134,7 @@ def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None =
     the agent works in code/, a copy of the code, and its config sits beside that in config/.
     """
     if shutil.which("claude") is None:
-        return {"verdict": None, "findings": [], "error": "can't find the claude CLI on your PATH"}
+        return {"error": "can't find the claude CLI on your PATH"}
     allowed = [*tools.split(",")] if tools else []
     servers: dict = {}
     if alert_log:  # the human gate's tool: the agent can ask for a person, and the request lands in alert_log
@@ -117,7 +145,7 @@ def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None =
         shutil.copytree(cwd, work)
         config.mkdir()
         (config / "system.md").write_text(system)
-        (config / "settings.json").write_text(json.dumps({"model": MODEL, "permissions": {"allow": allowed}}))
+        (config / "settings.json").write_text(json.dumps({"model": MODEL, "env": settings_env(), "permissions": {"allow": allowed}}))
         (config / "mcp.json").write_text(json.dumps({"mcpServers": servers}))
         try:
             if tools:
@@ -132,18 +160,47 @@ def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None =
                      "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
                      "--setting-sources=", "--no-session-persistence"],
                     input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
-            reply = json.loads(done.stdout)
-            answer = last_verdict(reply["result"] or "")
-            if answer["verdict"] not in ("approve", "request_changes"):
-                raise ValueError(answer["verdict"])
-            findings = [f if isinstance(f, dict) else {"rule": "", "why": str(f)} for f in answer.get("findings") or []]
-            return {**answer, "findings": findings, "cost": reply.get("total_cost_usd", 0)}  # keeps any fields you added
+            return json.loads(done.stdout)
         except subprocess.CalledProcessError as exc:
-            return {"verdict": None, "findings": [], "error": f"claude failed: {(exc.stderr or exc.stdout or '').strip()[:200]}"}
+            return {"error": f"claude failed: {(exc.stderr or exc.stdout or '').strip()[:200]}"}
         except subprocess.TimeoutExpired:
-            return {"verdict": None, "findings": [], "error": f"no answer after {TIMEOUT_SECONDS} seconds"}
-        except (ValueError, KeyError, TypeError, IndexError, AttributeError, OSError) as exc:
-            return {"verdict": None, "findings": [], "error": f"couldn't read the reply: {str(exc)[:120]}"}
+            return {"error": f"no answer after {TIMEOUT_SECONDS} seconds"}
+        except (ValueError, OSError) as exc:
+            return {"error": f"couldn't read the reply: {str(exc)[:120]}"}
+
+
+
+def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None = None) -> dict:
+    """The reviewer's verdict, or {"verdict": None, ...} when the call or its JSON failed."""
+    reply = run_claude(diff, system, tools, cwd, alert_log)
+    if "error" in reply:
+        return {"verdict": None, "findings": [], "error": reply["error"]}
+    try:
+        answer = last_json(reply["result"] or "", "verdict")
+        if answer["verdict"] not in ("approve", "request_changes"):
+            raise ValueError(answer["verdict"])
+        findings = [f if isinstance(f, dict) else {"rule": "", "why": str(f)} for f in answer.get("findings") or []]
+        return {**answer, "findings": findings, "cost": reply.get("total_cost_usd", 0)}  # keeps any fields you added
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        return {"verdict": None, "findings": [], "error": f"couldn't read the reply: {str(exc)[:120]}"}
+
+
+def gate_check(diff: str, system: str, tools: str, cwd: str) -> dict:
+    """The specialist gate agent's answer: {"needs_human": True or False, "reason"}, or needs_human None when it failed."""
+    reply = run_claude(diff, system, tools, cwd)
+    if "error" in reply:
+        return {"needs_human": None, "reason": "", "error": reply["error"]}
+    try:
+        answer = last_json(reply["result"] or "", "needs_human")
+        if not isinstance(answer["needs_human"], bool):
+            raise ValueError(f"needs_human is {answer['needs_human']!r}, not true or false")
+        return {"needs_human": answer["needs_human"], "reason": str(answer.get("reason", "")), "cost": reply.get("total_cost_usd", 0)}
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        return {"needs_human": None, "reason": "", "error": f"couldn't read the reply: {str(exc)[:120]}"}
+
+
+def written(agent: Path) -> bool:
+    return agent.exists() and STARTER not in agent.read_text()
 
 
 def blocked(pr_set: str, chunk: str) -> str | None:
@@ -202,15 +259,16 @@ def main() -> int:
     if all(a["verdict"] is None for a in answers):
         print(f"Every call failed, so {args.out} is unchanged. The first error: {answers[0].get('error', '') if answers else ''}")
         return 1
+    by_name = {path.stem: path for path in paths}
     if args.runs > 1:
         results = {path.stem: [a for job, a in zip(jobs, answers) if job == path] for path in paths}
         for name, reviews in results.items():
             for number, answer in enumerate(reviews, 1):
-                show(f"{name} run {number}", answer)
+                show(f"{name} run {number}", answer, by_name[name] if number == 1 else None)
     else:
         results = {p.stem: a for p, a in zip(paths, answers)}
         for name, answer in results.items():
-            show(name, answer)
+            show(name, answer, by_name[name])
     out = Path(args.out)
     merged = {**(json.loads(out.read_text()) if args.only and out.exists() else {}), **results}  # --only updates, it doesn't wipe
     out.write_text(json.dumps(merged, indent=2))

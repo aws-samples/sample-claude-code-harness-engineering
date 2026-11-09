@@ -24,11 +24,12 @@ import run_reviewer as runner  # noqa: E402
 QUEUE = Path("human-review-queue.md")
 
 
-def review_one(path: Path, system: str, tools: str, code: str, logs: str) -> pr_data.Review:
+def review_one(path: Path, system: str, tools: str, code: str, logs: str, specialist: tuple[str, str] | None) -> pr_data.Review:
     alert_log = Path(logs) / f"{path.stem}.jsonl"
     answer = runner.review(path.read_text(), system, tools, code, str(alert_log))
     alerts = [json.loads(line) for line in alert_log.read_text().splitlines()] if alert_log.exists() else []
-    return pr_data.Review(answer["verdict"], answer["findings"], alerts, answer.get("error", ""))
+    checked = runner.gate_check(path.read_text(), *specialist, code) if specialist else None
+    return pr_data.Review(answer["verdict"], answer["findings"], alerts, answer.get("error", ""), checked)
 
 
 def main() -> int:
@@ -44,10 +45,13 @@ def main() -> int:
     paths = runner.pr_paths(args.set, args.only)
     if not paths:
         raise SystemExit("No PRs here. If this set isn't open yet: ./lab goto gate")
-    print(f"Reviewing {len(paths)} PRs, then routing them. This can take a minute.", flush=True)
+    gate_agent = runner.GATE_AGENT
+    specialist = (runner.system_prompt(gate_agent), runner.agent_tools(gate_agent)) if runner.written(gate_agent) else None
+    also = ", with your specialist gate agent" if specialist else ""
+    print(f"Reviewing {len(paths)} PRs{also}, then routing them. This can take a minute.", flush=True)
     try:
         with tempfile.TemporaryDirectory() as logs, ThreadPoolExecutor(max_workers=5) as pool:
-            reviews = list(pool.map(lambda p: review_one(p, system, tools, code, logs), paths))
+            reviews = list(pool.map(lambda p: review_one(p, system, tools, code, logs, specialist), paths))
     finally:
         shutil.rmtree(code, ignore_errors=True)
     if all(review.verdict is None for review in reviews):
@@ -60,11 +64,15 @@ def main() -> int:
             where, why = route(pr, review)
             counts[where] += 1
             asked = "asked for a person" if review.alerts else "no alert"
+            if review.specialist:
+                said = review.specialist["needs_human"]
+                asked += f", specialist: {'FAILED' if said is None else 'a person should look' if said else 'no person needed'}"
             print(f"{pr.name}  agent: {review.verdict or 'FAILED: ' + review.error}, {asked}  ->  {where}: {why}")
             if where == "human":
                 summary = review.alerts[0].get("summary", "") if review.alerts else ""
                 findings = "".join(f"- {f.get('rule', '')}: {f.get('why', '')}\n" for f in review.findings)
-                queue.write(f"## {pr.name}: {pr.title}\nWhy: {why}\nAgent said: {review.verdict or 'nothing, it failed'}\n{summary}\n{findings}\n")
+                specialist_said = f"Specialist said: {review.specialist.get('reason') or review.specialist.get('error', '')}\n" if review.specialist else ""
+                queue.write(f"## {pr.name}: {pr.title}\nWhy: {why}\nAgent said: {review.verdict or 'nothing, it failed'}\n{summary}\n{specialist_said}{findings}\n")
     print(f"\n{dict(counts)}. People would see {counts['human']} of {len(paths)}.")
     return 0
 

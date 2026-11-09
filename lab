@@ -25,7 +25,7 @@ CATCH_UP = {
     "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"]),
     "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"]),
     "eval": ("after-eval", ["scripts/score.py"]),
-    "gate": ("after-gate", ["scripts/gate.py"]),
+    "gate": ("after-gate", ["scripts/gate.py", "my-work/7-gate-agent.md"]),
 }
 HELP = """Move through the lab
   ./lab                    where you are, and what's left
@@ -66,8 +66,12 @@ def unseal(chunk: str) -> None:
     """The lead's labels and the held-out PRs wait in a tag until their chunk."""
     paths = {"eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
     missing = [path for path in paths if not Path(path).exists()]
-    if missing and subprocess.run(["git", "checkout", "sealed", "--", *missing], capture_output=True).returncode == 0:
+    if not missing:
+        return
+    if subprocess.run(["git", "checkout", "sealed", "--", *missing], capture_output=True).returncode == 0:
         print(f"Opened: {', '.join(missing)}")
+    else:
+        print(f"Couldn't open {', '.join(missing)}: this repo has no 'sealed' tag, so it was copied without its git tags. Ask your facilitator for a copy made with setup.sh.")
 
 
 def go(chunk: str) -> None:

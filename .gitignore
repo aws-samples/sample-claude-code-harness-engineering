@@ -9,3 +9,5 @@ human-review-queue.md
 uv.lock
 *.orig
 .claude/frozen-agent.md
+.claude/settings.local.json
+.DS_Store

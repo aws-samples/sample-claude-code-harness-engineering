@@ -12,9 +12,9 @@ Decide the right answer for a few PRs, and design how you'll measure your review
 
 **Your files:** `my-work/4-gold-labels.md` and `my-work/5-eval-design.md`
 
-1. **Label five PRs (6 min).** Decide the right answer before the agent runs. Five is far too few to prove anything, and that's fine: this is to feel what you're asking of the agent. The team lead has labeled the other eleven, and the eval uses those automatically, so it still has sixteen. You can use Claude to help with this, since you aren't familiar with the codebase: in Claude, `/explain-pr pr-01` shows you what a PR changes and the code around it, without a verdict.
+1. **Label five PRs (6 min).** Decide the right answer before the agent runs. Five is far too few to prove anything, and that's fine: this is to feel what you're asking of the agent. The team lead has labeled the other eleven, and the eval uses those automatically, so it still has sixteen. Work with Claude on these, since you don't know the codebase yet: `/explain-pr pr-01` walks you through what a PR changes and the code around it, without giving a verdict. The diffs are in `data/review-prs/dev/` if you'd like to read them yourself.
 2. **Judge two design PRs (2 min).** `design-1` and `design-2` are about R13, so that's the question here. Judge them your own way, and compare with a neighbor.
-3. **Design the eval (7 min).** Answer the questions in `5-eval-design.md` to help guide a good design.
+3. **Design the eval (7 min).** In Claude, run `/design-eval`. It talks you through the four questions in `5-eval-design.md`, then writes your answers into it.
 
 **Done when** there are no TODOs left in either file.
 
@@ -46,31 +46,31 @@ Build the eval, use it to improve your reviewer, and finish with one fair test o
    ./lab review holdout
    ./lab score holdout
    ```
-   Eight is too few for a percentage, so read each error rather than the number. A clean run on eight small PRs isn't proof.
+   Eight is too few for a percentage, so read each error rather than the number. A clean run on eight PRs isn't proof.
 
-**Done when** you can name the change that moved the score most, and you've read any held-out errors. If there are none, ask what these eight have in common that real PRs don't.
+**Done when** you can name the change that moved the score most, and you've read any held-out errors.
 
 **Short of time?** `./lab catch-up eval` gives you a scorer. Spend the time on the agent.
 
 ## Chunk 6: Add a human gate (15 min)
 
-Decide when a person still needs to look at a PR, and build that into the pipeline.
+The lead has said which PRs a person should see. Decide what checks each one, and build it into the pipeline.
 
 **Start:** `./lab next`
 
-**Your file:** `my-work/6-human-gate.md`
+**Your files:** `my-work/6-human-gate.md`, and `my-work/7-gate-agent.md` if you choose a specialist agent
 
-1. **Read `data/review-prs/holdout/pr-45.diff`, and what your agent said about it.** Suppose a PR did talk your agent out of raising an alarm. What does that mean for who should decide?
-2. **Answer the questions in your file.** When should a person look? How would you assess that? Who gets it?
-3. **Build it with Claude.** There are two pieces. `alert_human(reason, summary)` is a tool your agent can call. It alerts nobody, since we aren't live. `route()` in `scripts/gate.py` then decides where each PR goes: `merge`, `author` or `human`.
+1. **Read the lead's preferences** in `docs/human-review.md`. There are six.
+2. **Decide who checks each one,** in `6-human-gate.md`: code in the gate, or an agent. If it's an agent, it can be your reviewer, by calling `alert_human`, or a specialist agent of its own that answers one question about each PR. Then say how you'll know the gate does what the preferences ask.
+3. **Build it with Claude.** `route()` in `scripts/gate.py` decides where each PR goes: `merge`, `author` or `human`. `alert_human(reason, summary)` is a tool your reviewer can call, which alerts nobody since we aren't live. A specialist agent goes in `my-work/7-gate-agent.md`, and the pipeline runs it on every PR once it's written.
    ```
-   Read my-work/6-human-gate.md. Build it: tell my agent when to call alert_human, and replace route() in scripts/gate.py. Get ./lab test-gate passing.
+   Read my-work/6-human-gate.md and docs/human-review.md. Build what I chose: route() in scripts/gate.py, when my reviewer should call alert_human, and my specialist agent if I chose one. Get ./lab test-gate passing.
    ```
-4. **Run the whole system:** `./lab pipeline`. Anything routed to a person lands in `human-review-queue.md`. Would you know what to do from what's in there? Is the number of PRs right?
+4. **Run the whole system:** `./lab pipeline`. Anything routed to a person lands in `human-review-queue.md`. Does what's there match the preferences? Is the number of PRs right?
 
 **Done when** `./lab test-gate` passes and you've read the queue.
 
-**Short of time?** `./lab catch-up gate` gives you a gate that passes. Read it, and argue with one of its conditions.
+**Short of time?** `./lab catch-up gate` gives you a gate and a specialist agent that pass. Read them, and argue with one of the choices.
 
 ## Check you're done
 

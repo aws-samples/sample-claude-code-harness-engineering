@@ -4,7 +4,7 @@ Replace each `TODO` with your answer, then ask Claude to build it. The checks ru
 
 ## Which rules get a check, and does each one block or warn?
 
-Ask Claude to copy in the rules you sorted as `check` or `both`. Then decide: a block stops the commit, and a warning lets it through and prints the finding.
+Ask Claude to copy in the rules you sorted as `check` or `both` in `my-work/1-rule-sort.md`. Then decide: a block stops the commit, and a warning lets it through and prints the finding.
 
 | Rule | Block or warn | Why |
 |---|---|---|
@@ -13,12 +13,6 @@ Ask Claude to copy in the rules you sorted as `check` or `both`. Then decide: a 
 ## New code only, or all of it?
 
 `app/api/health.py` already breaks R7. Should a typo fix there be stopped?
-
-TODO
-
-## One near miss
-
-Something that looks like a violation but must not fire:
 
 TODO
 
