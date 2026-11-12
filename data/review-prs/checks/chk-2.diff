@@ -1,0 +1,18 @@
+PR #402: Skip reminders on public holidays
+Description: Customers don't want reminders on a holiday.
+
+diff --git a/appointment_reminders/service/holidays.py b/appointment_reminders/service/holidays.py
+new file mode 100644
+index 0000000..a01d745
+--- /dev/null
++++ b/appointment_reminders/service/holidays.py
+@@ -0,0 +1,9 @@
++"""Public holidays, so we don't send reminders on them."""
++from __future__ import annotations
++
++import httpx
++
++
++def is_holiday(day: str, country: str) -> bool:
++    found = httpx.get(f"https://holidays.example.com/{country}/{day}", timeout=5)
++    return found.status_code == 200

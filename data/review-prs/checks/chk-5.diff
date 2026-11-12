@@ -1,0 +1,16 @@
+PR #405: Cancel an appointment through the bookings API
+Description: The front desk needs a cancel button.
+
+diff --git a/appointment_reminders/tools/cancellations.py b/appointment_reminders/tools/cancellations.py
+new file mode 100644
+index 0000000..a9d2f4c
+--- /dev/null
++++ b/appointment_reminders/tools/cancellations.py
+@@ -0,0 +1,7 @@
++"""Cancelling appointments in the bookings system."""
++from __future__ import annotations
++
++
++def cancel_appointment(client, appointment_id: str) -> None:
++    """Cancel one appointment."""
++    client.delete(f"/appointments/{appointment_id}").raise_for_status()

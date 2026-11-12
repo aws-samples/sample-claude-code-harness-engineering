@@ -2,7 +2,7 @@ PR #362: Short reminder wording for the status page
 Description: The branch status page needs a short version of the reminder wording. Reminders themselves keep the long one. Marketing has mentioned hiding the region and adding a sign-off, so this puts the wording choices in one place.
 
 diff --git a/appointment_reminders/service/risk.py b/appointment_reminders/service/risk.py
-index 609cafc..ba03548 100644
+index 609cafc..18741e0 100644
 --- a/appointment_reminders/service/risk.py
 +++ b/appointment_reminders/service/risk.py
 @@ -1,6 +1,8 @@
@@ -21,7 +21,7 @@ index 609cafc..ba03548 100644
 -def reminder_text(branch: str) -> str:
 -    """The reminder for a branch such as US-1."""
 -    return f"You have an appointment at your {branch} branch in {get_region(branch.split('-')[0])}."
-+@dataclass(frozen=True, kw_only=True)
++@dataclass(frozen=True)
 +class ReminderStyle:
 +    short: bool = False
 +    show_region: bool = True
@@ -36,17 +36,18 @@ index 609cafc..ba03548 100644
 +    text = f"Appointment at {where}." if style.short else f"You have an appointment at {where}."
 +    return f"{text} {style.sign_off}" if style.sign_off else text
 diff --git a/appointment_reminders/service/status_page.py b/appointment_reminders/service/status_page.py
-new file mode 100644
-index 0000000..5f4105f
---- /dev/null
+index b1b8067..5f4105f 100644
+--- a/appointment_reminders/service/status_page.py
 +++ b/appointment_reminders/service/status_page.py
-@@ -0,0 +1,9 @@
-+"""Text for the branch status page."""
-+from __future__ import annotations
-+
+@@ -1,9 +1,9 @@
+ """Text for the branch status page."""
+ from __future__ import annotations
+ 
+-from appointment_reminders.service.risk import reminder_text
 +from appointment_reminders.service.risk import ReminderStyle, reminder_text
-+
-+
-+def status_line(branch: str) -> str:
-+    """The line shown on the branch status page."""
+ 
+ 
+ def status_line(branch: str) -> str:
+     """The line shown on the branch status page."""
+-    return reminder_text(branch)
 +    return reminder_text(branch, ReminderStyle(short=True))

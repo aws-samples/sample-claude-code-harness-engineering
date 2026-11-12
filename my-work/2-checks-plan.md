@@ -1,10 +1,8 @@
 # 2. Plan the checks
 
-Replace each `TODO` with your answer, then ask Claude to build it. The checks run on commit, in a git pre-commit hook.
+Run `/plan-checks` in Claude. It asks you three questions, writes your answers here, then builds your checks and the pre-commit hook. You can edit this file afterwards, and ask Claude to update the checks to match.
 
 ## Which rules get a check, and does each one block or warn?
-
-Ask Claude to copy in the rules you sorted as `check` or `both` in `my-work/1-rule-sort.md`. Then decide: a block stops the commit, and a warning lets it through and prints the finding.
 
 | Rule | Block or warn | Why |
 |---|---|---|
@@ -12,14 +10,8 @@ Ask Claude to copy in the rules you sorted as `check` or `both` in `my-work/1-ru
 
 ## New code only, or all of it?
 
-`app/api/health.py` already breaks R7. Should a typo fix there be stopped?
-
 TODO
 
-## Three tests for your plan
+## How Claude is stopped from cheating
 
-There's no single right answer, but a good plan passes these:
-
-1. A secret is caught before it reaches git history.
-2. A block tells whoever hit it how to fix it.
-3. Old debt doesn't block an unrelated edit, unless you chose that on purpose.
+TODO

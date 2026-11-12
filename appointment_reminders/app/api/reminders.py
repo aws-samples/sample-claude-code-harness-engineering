@@ -9,6 +9,6 @@ from appointment_reminders.service.scheduler import due_appointments
 
 @app.route("/api/reminders/due")
 @rate_limit()
-def list_due(appointments: list) -> dict:
-    due = due_appointments(appointments, datetime.now(timezone.utc))
+def list_due(request) -> dict:
+    due = due_appointments(request.world.appointments, datetime.now(timezone.utc))
     return {"due": [a.id for a in due]}

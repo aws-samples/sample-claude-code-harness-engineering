@@ -8,12 +8,13 @@ import runpy
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parent)
 sys.path.insert(0, "scripts")
-from my_work import describe_labels, todos_left  # noqa: E402
+from my_work import todos_left  # noqa: E402
 
 STAGE, LOG = Path(".claude/lab-stage"), Path(".claude/lab-log")
 AGENT, FROZEN = Path("my-work/3-reviewer-agent.md"), Path(".claude/frozen-agent.md")
@@ -25,7 +26,7 @@ CATCH_UP = {
     "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"]),
     "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"]),
     "eval": ("after-eval", ["scripts/score.py"]),
-    "gate": ("after-gate", ["scripts/gate.py", "my-work/7-gate-agent.md"]),
+    "gate": ("after-gate", ["scripts/gate.py", "my-work/6-gate-agent.md"]),
 }
 HELP = """Move through the lab
   ./lab                    where you are, and what's left
@@ -34,11 +35,21 @@ HELP = """Move through the lab
   ./lab catch-up CHUNK     take our working version: checks, reviewer, eval, gate
 
 Build and test
-  ./lab test-checks        run your checks against our test cases
+  ./lab test-checks        run your checks on our test cases and the check PRs
+  ./lab review try         run your agent on the practice PRs
+  ./lab eval               run your agent on the sixteen dev PRs, and score it
+  ./lab holdout            the fair test: freeze your agent, run it on the held-out PRs, and score it
   ./lab test-gate          run your human gate against tricky situations
-  ./lab review SET         run your agent: try, dev, design or holdout
+  ./lab pipeline [holdout] the whole system on the dev PRs: checks, agent, then gate
+
+More control
+  ./lab review SET         run your agent on one set: try, dev, design or holdout
   ./lab score [holdout]    score the last review
-  ./lab pipeline [dev]     the whole system: agent, then gate"""
+
+See the service
+  ./lab demo               run the app at http://localhost:8000
+  ./lab demo PR            run it with one PR applied, such as ./lab demo pr-01
+  ./lab demo --trouble provider   make a stand-in service misbehave: provider, bookings or worker"""
 
 
 def current() -> str:
@@ -64,7 +75,7 @@ def show(chunk: str) -> None:
 
 def unseal(chunk: str) -> None:
     """The lead's labels and the held-out PRs wait in a tag until their chunk."""
-    paths = {"eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
+    paths = {"label": SEALED[:1], "eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
     missing = [path for path in paths if not Path(path).exists()]
     if not missing:
         return
@@ -81,8 +92,6 @@ def go(chunk: str) -> None:
         if left and chunk != previous:
             print(f"Moving on with {left} TODOs left in {previous}. That's fine: you can come back.")
     unseal(chunk)
-    if chunk == "eval":
-        print(describe_labels())
     if chunk in ("holdout", "gate"):
         freeze()
     STAGE.write_text(chunk + "\n")
@@ -137,6 +146,41 @@ def review(args: list[str]) -> int:
     return run("scripts/run_reviewer.py", *command, *extra)
 
 
+def serve(cwd: str, options: list) -> int:
+    """Run the app's server in cwd, with the workshop's packages."""
+    try:
+        if shutil.which("uv"):
+            return subprocess.run(["uv", "run", "--quiet", "--project", str(Path.cwd()), "python", "-m", "appointment_reminders.app.server", *options], cwd=cwd).returncode
+        return subprocess.run(["python3", "-m", "appointment_reminders.app.server", *options], cwd=cwd).returncode
+    except KeyboardInterrupt:
+        return 0
+
+
+def demo(args: list) -> int:
+    """Run the app, with one PR's change applied if you name one, so you can see what it does."""
+    options = []
+    for option in ("--port", "--trouble"):  # passed on to the server
+        if option in args[:-1]:
+            at = args.index(option)
+            options, args = options + args[at:at + 2], args[:at] + args[at + 2:]
+    if not args:
+        return serve(".", options)
+    pr = args[0]
+    diffs = sorted(Path("data/review-prs").glob(f"*/{pr}.diff"))
+    if not diffs:
+        sys.exit(f"There's no open PR called {pr}. The held-out PRs open with ./lab goto holdout.")
+    copy = Path(tempfile.mkdtemp(prefix=f"demo-{pr}-"))
+    shutil.copytree("appointment_reminders", copy / "appointment_reminders", ignore=shutil.ignore_patterns("__pycache__"))
+    (copy / "pr.diff").write_text(diffs[0].read_text().partition("\n\n")[2])
+    if subprocess.run(["git", "apply", "pr.diff"], cwd=copy).returncode:
+        sys.exit(f"Couldn't apply {pr} to the app.")
+    print(f"The app, with {pr} applied: {diffs[0].read_text().splitlines()[0]}")
+    try:
+        return serve(str(copy), options)
+    finally:
+        shutil.rmtree(copy, ignore_errors=True)
+
+
 def catch_up(chunk: str) -> int:
     if chunk not in CATCH_UP:
         sys.exit(f"usage: ./lab catch-up {'|'.join(CATCH_UP)}")
@@ -185,11 +229,21 @@ def main(args: list[str]) -> int:
         return run("scripts/test_gate.py")
     elif command == "review":
         return review(rest)
+    elif command == "eval":
+        done = review(["dev", *rest])
+        return done or run("scripts/eval_reviewer.py")
+    elif command == "holdout":
+        if current() not in ("holdout", "gate"):
+            go("holdout")
+        done = review(["holdout"])
+        return done or run("scripts/eval_reviewer.py", "--set", "holdout", "--results", "results-holdout.json")
     elif command == "score":
         which = ["--set", "holdout", "--results", "results-holdout.json"] if rest[:1] == ["holdout"] else [*rest]
         return run("scripts/eval_reviewer.py", *which)
+    elif command == "demo":
+        return demo(rest)
     elif command == "pipeline":
-        return run("scripts/review_pipeline.py", "--set", rest[0] if rest else "holdout")
+        return run("scripts/review_pipeline.py", "--set", rest[0] if rest else "dev")
     else:
         print(HELP.format(chunks=" ".join(ORDER)))
         return 1

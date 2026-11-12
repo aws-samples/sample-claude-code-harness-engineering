@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""The whole system: run the reviewer with its alert_human tool, then let your gate route each PR.
+"""The whole system: your checks, then the reviewer with its alert_human tool, then your gate routes each PR.
 
   ./lab pipeline [dev]
 
-Anything routed to a person lands in human-review-queue.md. Nobody is really alerted.
+A PR your checks block goes back to Claude without a review. Anything routed to a person lands in human-review-queue.md.
+Nobody is really alerted.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pr_data  # noqa: E402
 from gate import route  # noqa: E402
 import run_reviewer as runner  # noqa: E402
+from run_checks import check_pr  # noqa: E402
 
 QUEUE = Path("human-review-queue.md")
 
@@ -34,7 +36,7 @@ def review_one(path: Path, system: str, tools: str, code: str, logs: str, specia
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--set", choices=["dev", "holdout"], default="holdout")
+    parser.add_argument("--set", choices=["dev", "holdout"], default="dev")
     parser.add_argument("--only", default="")
     args = parser.parse_args()
     reason = runner.blocked(args.set, runner.chunk_now()) if args.set != "holdout" else None
@@ -45,10 +47,21 @@ def main() -> int:
     paths = runner.pr_paths(args.set, args.only)
     if not paths:
         raise SystemExit("No PRs here. If this set isn't open yet: ./lab goto gate")
+    sent_back = {}
+    for path in paths:
+        blocks = [finding.rule for _, level, finding in check_pr(path.read_text()) if level == "block"]
+        if blocks:
+            sent_back[path] = blocks
+            print(f"{path.stem}  your checks blocked it ({', '.join(sorted(set(blocks)))})  ->  back to Claude, with no review")
+    paths = [path for path in paths if path not in sent_back]
     gate_agent = runner.GATE_AGENT
     specialist = (runner.system_prompt(gate_agent), runner.agent_tools(gate_agent)) if runner.written(gate_agent) else None
     also = ", with your specialist gate agent" if specialist else ""
     print(f"Reviewing {len(paths)} PRs{also}, then routing them. This can take a minute.", flush=True)
+    if not paths:
+        shutil.rmtree(code, ignore_errors=True)
+        print(f"Your checks sent back all {len(sent_back)}, so there's nothing to review.")
+        return 0
     try:
         with tempfile.TemporaryDirectory() as logs, ThreadPoolExecutor(max_workers=5) as pool:
             reviews = list(pool.map(lambda p: review_one(p, system, tools, code, logs, specialist), paths))
@@ -57,7 +70,7 @@ def main() -> int:
     if all(review.verdict is None for review in reviews):
         print(f"Every call failed, so {QUEUE} is unchanged. The first error: {reviews[0].error if reviews else ''}")
         return 1
-    counts: Counter[str] = Counter()
+    counts: Counter[str] = Counter({"back to Claude": len(sent_back)} if sent_back else {})
     with QUEUE.open("w") as queue:
         for path, review in zip(paths, reviews):
             pr = pr_data.load_pr(path)
@@ -73,7 +86,7 @@ def main() -> int:
                 findings = "".join(f"- {f.get('rule', '')}: {f.get('why', '')}\n" for f in review.findings)
                 specialist_said = f"Specialist said: {review.specialist.get('reason') or review.specialist.get('error', '')}\n" if review.specialist else ""
                 queue.write(f"## {pr.name}: {pr.title}\nWhy: {why}\nAgent said: {review.verdict or 'nothing, it failed'}\n{summary}\n{specialist_said}{findings}\n")
-    print(f"\n{dict(counts)}. People would see {counts['human']} of {len(paths)}.")
+    print(f"\n{dict(counts)}. People would see {counts['human']} of {len(paths) + len(sent_back)}.")
     return 0
 
 

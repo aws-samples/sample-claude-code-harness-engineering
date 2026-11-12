@@ -3,14 +3,18 @@
 
   python3 scripts/run_checks.py FILE...    check these files
   python3 scripts/run_checks.py --staged   check what's staged, for the git pre-commit hook
+  python3 scripts/run_checks.py --pr DIFF  check what a PR would add, as the hook would check its commit
 
 A check that blocks makes the script exit 1, which stops the commit. Claude reads the message.
 """
 from __future__ import annotations
 
 import argparse
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -41,11 +45,15 @@ def _text_of(source: str, finding) -> str:
 
 def findings_for(path: str, source: str) -> list:
     """With SCOPE "new", a problem that was already there at the last commit is left alone."""
+    at_head = _git("show", f"HEAD:{path}")
+    return findings_against(path, source, at_head.stdout.decode(errors="replace") if at_head.returncode == 0 else "")
+
+
+def findings_against(path: str, source: str, old_source: str) -> list:
+    """Findings in source. With SCOPE "new", those already in old_source are left alone."""
     found = check_source(path, source)
     if not new_only():
         return found
-    at_head = _git("show", f"HEAD:{path}")
-    old_source = at_head.stdout.decode(errors="replace") if at_head.returncode == 0 else ""
     old = Counter((f.rule, _text_of(old_source, f)) for f in check_source(path, old_source))
     kept = []
     for finding in found:
@@ -55,6 +63,23 @@ def findings_for(path: str, source: str) -> list:
             continue
         kept.append(finding)
     return kept
+
+
+def check_pr(diff_text: str) -> list:
+    """(path, level, finding) for each problem a PR's diff would bring in, against the code as it is now."""
+    body = diff_text.partition("\n\n")[2]
+    found = []
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp)
+        shutil.copytree(ROOT / CODE, copy / CODE, ignore=shutil.ignore_patterns("__pycache__"))
+        (copy / "pr.diff").write_text(body)
+        subprocess.run(["git", "apply", "pr.diff"], cwd=copy, check=True, capture_output=True)
+        for path in re.findall(r"^\+\+\+ b/(\S+)", body, re.M):
+            if not path.startswith(CODE) or not (copy / path).is_file():
+                continue
+            before = (ROOT / path).read_text() if (ROOT / path).is_file() else ""
+            found += [(path, level_of(f.rule), f) for f in findings_against(path, (copy / path).read_text(), before)]
+    return found
 
 
 def _read(path: str, staged: bool) -> str | None:
@@ -81,7 +106,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("files", nargs="*")
     parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--pr", help="a PR's .diff file")
     args = parser.parse_args()
+    if args.pr:
+        found = check_pr(Path(args.pr).read_text())
+        for path, level, finding in found:
+            print(f"{level.upper()} {finding.rule} {path}:{finding.line} {finding.message}", file=sys.stderr)
+        return 1 if any(level == "block" for _, level, _ in found) else 0
     names = _git("diff", "--cached", "--name-only", "-z").stdout.decode().split("\0") if args.staged else args.files
     blocked = False
     for name in filter(None, names):

@@ -14,11 +14,11 @@ import argparse
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from my_work import my_labels, unclear_labels  # noqa: E402
 from score import score  # noqa: E402
 
 
@@ -27,18 +27,8 @@ def _read(path: Path) -> dict[str, dict]:
 
 
 def load_labels(pr_set: str) -> dict[str, dict]:
-    """Gold labels: the lead's, with yours replacing them on the PRs you labeled."""
-    if pr_set == "holdout":
-        return _read(ROOT / "data/review-prs/holdout/labels.csv")
-    return {**_read(ROOT / "data/review-prs/lead-labels.csv"), **my_labels()}
-
-
-def show_disagreements() -> None:
-    """Where you and the lead differ. Two careful people disagreeing is the ceiling on any reviewer."""
-    lead = _read(ROOT / "data/review-prs/lead-labels.csv")
-    for pr, mine in my_labels().items():
-        if pr in lead and mine["needs_changes"] != lead[pr]["needs_changes"]:
-            print(f"you and the lead differ on {pr}: you said {mine['needs_changes']}, lead said {lead[pr]['needs_changes']} ({lead[pr]['rules'] or 'no rule'}): {lead[pr]['reason']}")
+    """Gold labels: the lead's good answer for each PR."""
+    return _read(ROOT / ("data/review-prs/holdout/labels.csv" if pr_set == "holdout" else "data/review-prs/lead-labels.csv"))
 
 
 def main() -> int:
@@ -49,21 +39,22 @@ def main() -> int:
     if args.set == "holdout" and not (ROOT / "data/review-prs/holdout/labels.csv").exists():
         raise SystemExit("The held-out PRs aren't open yet. When you're ready: ./lab goto holdout")
     if args.set == "dev" and not (ROOT / "data/review-prs/lead-labels.csv").exists():
-        raise SystemExit("The lead's labels aren't open yet. When you're ready: ./lab goto eval")
+        raise SystemExit("The lead's labels aren't open yet. When you're ready: ./lab goto label")
     labels = load_labels(args.set)
-    if args.set == "dev":
-        for pr, cell in unclear_labels().items():
-            print(f"Couldn't tell whether {cell!r} means yes or no for {pr}, so the lead's label is used. Edit my-work/4-gold-labels.md to change that.")
     if not Path(args.results).exists():
         raise SystemExit(f"No results in {args.results} yet. Run ./lab review {args.set} first.")
     results = json.loads(Path(args.results).read_text())
     missing = sorted(pr for pr in labels if results.get(pr, {}).get("verdict") is None)
     if missing:
         print(f"No answer from the agent on {len(missing)} PRs: {', '.join(missing)}")
-    if args.set == "dev":
-        show_disagreements()
-    for name, value in score(labels, results).items():
+    measures = score(labels, results)
+    for name, value in measures.items():
         print(f"{name}: {value}")
+    notes = ROOT / "my-work/notes.md"
+    if args.results in ("results.json", "results-holdout.json") and notes.exists():  # a record of each run, to see what each change did
+        with notes.open("a") as out:
+            out.write(f"- {time.strftime('%H:%M')} {args.set}: " + "; ".join(f"{name}: {value}" for name, value in measures.items()) + "\n")
+        print("Added to my-work/notes.md.")
     print("The labels cover every rule. A miss on a rule your checks own may be fine, since the checks catch it: read it rather than count it.")
     return 0
 

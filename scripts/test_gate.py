@@ -31,7 +31,7 @@ if written(ROOT / GATE_AGENT):
         ("The specialist says no person is needed, and nothing else fires: it merges", "dev/pr-06", Review("approve", specialist={"needs_human": False, "reason": "A cached getter."}), {"merge"}),
     ]
 else:
-    print("No specialist agent in my-work/7-gate-agent.md, so its cases are skipped.\n")
+    print("No specialist agent in my-work/6-gate-agent.md, so its cases are skipped.\n")
 failures = 0
 for text, pr, review, allowed in CASES:
     where, why = route(load_pr(PRS / f"{pr}.diff"), review)

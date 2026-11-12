@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)  # paths are repo-relative wherever this is run from
 
 AGENT = Path("my-work/3-reviewer-agent.md")
-GATE_AGENT = Path("my-work/7-gate-agent.md")  # the specialist gate agent, if you chose one
+GATE_AGENT = Path("my-work/6-gate-agent.md")  # the specialist gate agent, if you chose one
 FROZEN = Path(".claude/frozen-agent.md")  # ./lab next copies your agent here when the held-out run opens
 MODEL_ALIASES = ("haiku", "sonnet", "opus", "fable")
 MODEL_ID = re.compile(r"(?:[a-z]{2,6}\.)?(?:anthropic\.)?claude-[a-z0-9][a-z0-9.-]{0,62}(?::[0-9]{1,3})?")  # claude-sonnet-5-5, or Bedrock's global.anthropic.claude-sonnet-5-5
