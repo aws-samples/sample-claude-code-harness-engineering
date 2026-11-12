@@ -1,4 +1,4 @@
-# 5. How would you know the reviewer is any good?
+# 4. How would you know the reviewer is any good?
 
 Replace each `TODO` with your answer. A few words is fine. `./lab` shows how many are left.
 

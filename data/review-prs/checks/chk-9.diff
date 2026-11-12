@@ -1,0 +1,21 @@
+PR #409: Read the SMS provider's key
+Description: Ready for the SMS channel.
+
+diff --git a/appointment_reminders/tools/sms_config.py b/appointment_reminders/tools/sms_config.py
+new file mode 100644
+index 0000000..b77ff9f
+--- /dev/null
++++ b/appointment_reminders/tools/sms_config.py
+@@ -0,0 +1,12 @@
++"""Settings for the SMS provider."""
++from __future__ import annotations
++
++import os
++
++
++def provider_api_key() -> str:
++    """The SMS provider's key, from the environment.
++
++    Failure modes: raises KeyError if SMS_PROVIDER_API_KEY isn't set.
++    """
++    return os.environ["SMS_PROVIDER_API_KEY"]

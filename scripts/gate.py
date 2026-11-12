@@ -1,4 +1,4 @@
-"""Your human gate: decides where each reviewed PR goes. Build it with Claude, from my-work/6-human-gate.md.
+"""Your human gate: decides where each reviewed PR goes. Build it with Claude, from my-work/5-human-gate.md.
 
 The agent can ask for a person with its alert_human tool, but a request is only a request: this code decides.
 Think about what the agent can't be trusted to do for itself. ./lab test-gate tries it on tricky cases.

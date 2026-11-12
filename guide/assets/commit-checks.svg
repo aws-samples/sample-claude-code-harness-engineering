@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 260" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">What happens when anyone commits</title>
+  <desc id="desc">A commit runs the pre-commit hook, which runs your checks. If a blocking rule fires, the commit is stopped and Claude sees why. If only a warning fires, the commit goes through with a note. If nothing fires, it goes through.</desc>
+  <style>
+    .t{font-size:14.5px;font-weight:600;fill:#241a35} .s{font-size:12.5px;fill:#6c6480}
+    .m{text-anchor:middle} .code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;fill:#5a3e9b}
+    .track{stroke:#ddd6ea;stroke-width:4;stroke-linecap:round;fill:none}
+    .stop{fill:#fff;stroke:#241a35;stroke-width:2.5}
+  </style>
+  <rect width="960" height="260" rx="16" fill="#faf9fc"/>
+  <path d="M80 140H540C600 140 610 60 660 60M540 140H660M540 140C600 140 610 220 660 220" class="track"/>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="9s" repeatCount="indefinite" path="M80 140H540C600 140 610 60 660 60" keyPoints="0;0.377;0.377;0.754;0.754;1;1" keyTimes="0;0.08;0.12;0.2;0.25;0.3;1" calcMode="linear"/><animate attributeName="fill" dur="9s" repeatCount="indefinite" values="#5a3e9b;#5a3e9b;#c0503f;#c0503f" keyTimes="0;0.27;0.3;1"/><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;0.32;0.33;1"/></circle>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="9s" begin="-6s" repeatCount="indefinite" path="M80 140H660" keyPoints="0;0.397;0.397;0.793;0.793;1;1" keyTimes="0;0.08;0.12;0.2;0.25;0.3;1" calcMode="linear"/><animate attributeName="fill" begin="-6s" dur="9s" repeatCount="indefinite" values="#5a3e9b;#5a3e9b;#d98e1f;#d98e1f" keyTimes="0;0.27;0.3;1"/><animate attributeName="opacity" begin="-6s" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;0.32;0.33;1"/></circle>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="9s" begin="-3s" repeatCount="indefinite" path="M80 140H540C600 140 610 220 660 220" keyPoints="0;0.377;0.377;0.754;0.754;1;1" keyTimes="0;0.08;0.12;0.2;0.25;0.3;1" calcMode="linear"/><animate attributeName="fill" begin="-3s" dur="9s" repeatCount="indefinite" values="#5a3e9b;#5a3e9b;#2f7d5b;#2f7d5b" keyTimes="0;0.27;0.3;1"/><animate attributeName="opacity" begin="-3s" dur="9s" repeatCount="indefinite" values="1;1;0;0" keyTimes="0;0.32;0.33;1"/></circle>
+  <circle cx="80" cy="140" r="10" class="stop"/><text x="80" y="102" class="t m">Claude commits</text><text x="80" y="119" class="code m">git commit</text>
+  <circle cx="310" cy="140" r="10" class="stop"/><text x="310" y="102" class="t m">Pre-commit hook</text><text x="310" y="119" class="s m">runs before every commit</text>
+  <circle cx="540" cy="140" r="10" class="stop"/><text x="540" y="102" class="t m">Your checks</text><text x="540" y="119" class="code m">scripts/checks.py</text>
+  <circle cx="660" cy="60" r="10" style="fill:#c0503f;stroke:#c0503f;stroke-width:2.5"/><text x="682" y="57" class="t">A block rule fires</text><text x="682" y="74" class="s">commit stopped, and Claude sees why</text>
+  <circle cx="660" cy="140" r="10" style="fill:#d98e1f;stroke:#d98e1f;stroke-width:2.5"/><text x="682" y="137" class="t">A warn rule fires</text><text x="682" y="154" class="s">commit goes through, with a note</text>
+  <circle cx="660" cy="220" r="10" style="fill:#2f7d5b;stroke:#2f7d5b;stroke-width:2.5"/><text x="682" y="217" class="t">Nothing fires</text><text x="682" y="234" class="s">commit goes through</text>
+</svg>

@@ -1,0 +1,15 @@
+PR #401: Reset the demo branch's reminders
+Description: Sales want a clean slate before each demo.
+
+diff --git a/appointment_reminders/service/demo_reset.py b/appointment_reminders/service/demo_reset.py
+new file mode 100644
+index 0000000..b008bc6
+--- /dev/null
++++ b/appointment_reminders/service/demo_reset.py
+@@ -0,0 +1,6 @@
++"""Clear the demo branch before a sales demo."""
++from __future__ import annotations
++
++
++def reset_demo(db) -> None:
++    db.execute("TRUNCATE TABLE reminders")

@@ -2,6 +2,7 @@
 """./lab test-checks: run your checks against our test cases, for each rule in POLICY."""
 from __future__ import annotations
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from checks import POLICY, SCOPE, check_source  # noqa: E402
+from run_checks import check_pr  # noqa: E402
 
 if not POLICY:
     sys.exit("POLICY in scripts/checks.py is empty. Ask Claude to build your plan from my-work/2-checks-plan.md, or take ours with ./lab catch-up checks.")
@@ -33,5 +35,24 @@ for rule in POLICY:
     for case in bad:
         print(f"       {'missed' if case['fires'] else 'false alarm'}: {case['path']}: {case['source'].strip()!r}")
     failures += bool(bad)
-print(f"{failures} rules to fix." if failures else "All passing.")
+
+print("\nYour checks on the check PRs in data/review-prs/checks/, as your hook would check their commits.")
+print("A rule you gave the reviewer is for your reviewer to catch.")
+for row in csv.DictReader((ROOT / "data/review-prs/checks/expected.csv").open()):
+    found = check_pr((ROOT / f"data/review-prs/checks/{row['pr']}.diff").read_text())
+    fired = {finding.rule: level for _, level, finding in found}
+    rule = row["rules"]
+    if not rule:
+        result = "passed" if not fired else f"FALSE ALARM: {', '.join(sorted(fired))}"
+        failures += bool(fired)
+    elif rule in fired:
+        result = f"{'blocked' if fired[rule] == 'block' else 'warned'}"
+    elif rule in POLICY:
+        result = "MISSED"
+        failures += 1
+    else:
+        result = "for your reviewer"
+    extra = sorted(set(fired) - {rule}) if rule else []
+    print(f"  {row['pr']}  {rule or '-':<4} {result + ('  also ' + ', '.join(extra) if extra else ''):<18} {row['reason']}")
+print(f"\n{failures} to fix." if failures else "\nAll passing.")
 sys.exit(1 if failures else 0)

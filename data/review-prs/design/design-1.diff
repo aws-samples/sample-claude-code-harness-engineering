@@ -19,17 +19,12 @@ index 609cafc..a35d040 100644
 +    text = f"Appointment at {where}." if short else f"You have an appointment at {where}."
 +    return f"{text} Thank you." if polite else text
 diff --git a/appointment_reminders/service/status_page.py b/appointment_reminders/service/status_page.py
-new file mode 100644
-index 0000000..602ca88
---- /dev/null
+index b1b8067..602ca88 100644
+--- a/appointment_reminders/service/status_page.py
 +++ b/appointment_reminders/service/status_page.py
-@@ -0,0 +1,9 @@
-+"""Text for the branch status page."""
-+from __future__ import annotations
-+
-+from appointment_reminders.service.risk import reminder_text
-+
-+
-+def status_line(branch: str) -> str:
-+    """The line shown on the branch status page."""
+@@ -6,4 +6,4 @@ from appointment_reminders.service.risk import reminder_text
+ 
+ def status_line(branch: str) -> str:
+     """The line shown on the branch status page."""
+-    return reminder_text(branch)
 +    return reminder_text(branch, True, True, False)
