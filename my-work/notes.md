@@ -1,4 +1,4 @@
 # My notes
 
-Each `./lab eval` and `./lab holdout` adds its score here, so you can see what each change did.
+`./lab eval`, `./lab holdout` and `./lab pipeline` add their results here. Use `./lab eval --note "..."` to record what you changed.
 

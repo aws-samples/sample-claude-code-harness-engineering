@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="title desc">
   <title id="title">How an eval scores your reviewer</title>
-  <desc id="desc">For each PR, the gold label says what a good answer is, and the reviewer gives its own answer. Comparing the two gives a result: caught, a false alarm, or missed. Adding up the results over every PR gives your measures, such as how many it caught and how many false alarms it raised.</desc>
+  <desc id="desc">For each PR, the lead's label says what a good answer is, and the reviewer gives its own answer. Comparing the two gives a result: caught, a false alarm, or missed. Adding up the results over every PR gives your measures, such as how many it caught and how many false alarms it raised.</desc>
   <style>
     .h{font-size:13px;font-weight:600;fill:#6c6480}
     .pr{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;font-weight:600;fill:#241a35}
@@ -11,7 +11,7 @@
   </style>
   <rect width="960" height="330" rx="16" fill="#faf9fc"/>
   <text x="40" y="42" class="h">PR</text>
-  <text x="140" y="42" class="h">Gold label: a good answer</text>
+  <text x="140" y="42" class="h">The lead's label</text>
   <text x="440" y="42" class="h">Your reviewer said</text>
   <text x="740" y="42" class="h">Result</text>
 
@@ -21,7 +21,7 @@
     <text x="40" y="95" class="pr">pr-01</text>
     <rect x="136" y="72" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="150" y="95" class="t">Needs changes: R5</text>
     <rect x="436" y="72" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="450" y="95" class="t">Request changes: R5</text>
-    <g opacity="0"><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.16;0.19;0.95;1"/>
+    <g>
       <circle cx="746" cy="90" r="9" fill="#2f7d5b"/><text x="764" y="95" class="r" fill="#2f7d5b">Caught</text></g>
   </g>
   <g>
@@ -30,7 +30,7 @@
     <text x="40" y="155" class="pr">pr-02</text>
     <rect x="136" y="132" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="150" y="155" class="t">Fine as it is</text>
     <rect x="436" y="132" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="450" y="155" class="t">Request changes: R5</text>
-    <g opacity="0"><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.36;0.39;0.95;1"/>
+    <g>
       <circle cx="746" cy="150" r="9" fill="#c0503f"/><text x="764" y="155" class="r" fill="#b0473a">False alarm</text></g>
   </g>
   <g>
@@ -39,12 +39,12 @@
     <text x="40" y="215" class="pr">pr-13</text>
     <rect x="136" y="192" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="150" y="215" class="t">Needs changes: R6</text>
     <rect x="436" y="192" width="240" height="36" rx="8" fill="#fff" stroke="#e5e0ee"/><text x="450" y="215" class="t">Approve</text>
-    <g opacity="0"><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.56;0.59;0.95;1"/>
+    <g>
       <circle cx="746" cy="210" r="9" fill="#d98e1f"/><text x="764" y="215" class="r" fill="#9a5f07">Missed</text></g>
   </g>
 
   <path d="M40 250H920" stroke="#e5e0ee" stroke-width="1.5"/>
-  <g opacity="0"><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;0;1;1;0" keyTimes="0;0.64;0.68;0.95;1"/>
+  <g>
     <text x="40" y="285" class="sum">Add up every PR into your measures</text>
     <text x="40" y="308" class="s">for example: caught 1 of the 2 that need changes, and 1 false alarm on the 1 that's fine</text>
   </g>

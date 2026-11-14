@@ -37,7 +37,7 @@ for rule in POLICY:
     failures += bool(bad)
 
 print("\nYour checks on the check PRs in data/review-prs/checks/, as your hook would check their commits.")
-print("A rule you gave the reviewer is for your reviewer to catch.")
+print('"for your reviewer" means you have no check for that rule.')
 for row in csv.DictReader((ROOT / "data/review-prs/checks/expected.csv").open()):
     found = check_pr((ROOT / f"data/review-prs/checks/{row['pr']}.diff").read_text())
     fired = {finding.rule: level for _, level, finding in found}

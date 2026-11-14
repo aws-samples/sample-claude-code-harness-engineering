@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="title desc">
   <title id="title">What your human gate does</title>
-  <desc id="desc">After the reviewer, your gate sends each PR one of three ways: to a person, back to Claude to fix what the reviewer found, or on to merge. Code in the gate, your reviewer and a specialist agent can each tell it that a person should look.</desc>
+  <desc id="desc">After the reviewer, your gate sends each PR one of three ways: to a person, back to Claude to fix what the reviewer found, or on to merge. Code in the gate, your reviewer and a specialist can each tell it that a person should look.</desc>
   <style>
     .t{font-size:14.5px;font-weight:600;fill:#241a35} .s{font-size:12.5px;fill:#6c6480} .m{text-anchor:middle}
     .track{stroke:#ddd6ea;stroke-width:4;stroke-linecap:round;fill:none}
@@ -9,8 +9,8 @@
   </style>
   <rect width="960" height="330" rx="16" fill="#faf9fc"/>
   <path d="M190 74C190 140 420 120 420 172M420 74V172M650 74C650 140 420 120 420 172" class="feed"/>
-  <circle cx="190" cy="66" r="7" style="fill:#efeaf8;stroke:#5a3e9b;stroke-width:2"/><text x="190" y="36" class="t m">Code</text><text x="190" y="52" class="s m">files, size, did checks finish?</text>
-  <circle cx="420" cy="66" r="7" style="fill:#efeaf8;stroke:#5a3e9b;stroke-width:2"/><text x="420" y="36" class="t m">Your reviewer</text><text x="420" y="52" class="s m">calls alert_human</text>
+  <circle cx="190" cy="66" r="7" style="fill:#efeaf8;stroke:#5a3e9b;stroke-width:2"/><text x="190" y="36" class="t m">Code</text><text x="190" y="52" class="s m">files, size, did the review finish?</text>
+  <circle cx="420" cy="66" r="7" style="fill:#efeaf8;stroke:#5a3e9b;stroke-width:2"/><text x="420" y="36" class="t m">Your reviewer</text><text x="420" y="52" class="s m">adds ask_human</text>
   <circle cx="650" cy="66" r="7" style="fill:#efeaf8;stroke:#5a3e9b;stroke-width:2"/><text x="650" y="36" class="t m">A specialist agent</text><text x="650" y="52" class="s m">one question per PR</text>
 
   <path d="M80 190H700M420 190C520 190 560 100 700 100M420 190C520 190 560 280 700 280" class="track"/>

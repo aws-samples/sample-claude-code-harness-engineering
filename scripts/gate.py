@@ -1,16 +1,12 @@
-"""Your human gate: decides where each reviewed PR goes. Build it with Claude, from my-work/5-human-gate.md.
-
-The agent can ask for a person with its alert_human tool, but a request is only a request: this code decides.
-Think about what the agent can't be trusted to do for itself. ./lab test-gate tries it on tricky cases.
-"""
+"""Your human gate: decides where each reviewed PR goes. Build it with /design-gate."""
 from __future__ import annotations
 
 from pr_data import Pr, Review
 
 
 def route(pr: Pr, review: Review) -> tuple[str, str]:
-    """Return where the PR goes, "merge", "author" or "human", and why. See scripts/pr_data.py for what Pr and Review hold."""
+    """Return where the PR goes, "merge", "claude" or "human", and why. See scripts/pr_data.py for what Pr and Review hold."""
     # TODO: this is the naive version. Replace it with the gate you designed.
     if review.verdict == "request_changes":
-        return "author", "the agent asked for changes"
-    return "merge", "the agent approved"
+        return "claude", "the reviewer asked for changes"
+    return "merge", "the reviewer approved"
