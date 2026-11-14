@@ -1,4 +1,4 @@
-"""What the gate gets for each PR: the PR itself, and what the agent said. You don't need to change this file."""
+"""What the gate gets for each PR: the PR itself, and what the reviewer said. You don't need to change this file."""
 from __future__ import annotations
 
 import re
@@ -14,15 +14,16 @@ class Pr:
     paths: list[str]
     lines_added: int
     diff: str
+    fixes: int = 0  # how many times Claude has already fixed this PR
 
 
 @dataclass
 class Review:
-    verdict: str | None  # "approve", "request_changes", or None if the agent failed
+    verdict: str | None  # "approve", "request_changes", or None if the review failed
     findings: list[dict] = field(default_factory=list)
-    alerts: list[dict] = field(default_factory=list)  # what the agent sent to alert_human: {"reason", "summary"}
-    error: str = ""  # why the agent failed, if it did
-    specialist: dict | None = None  # the specialist gate agent's answer, if you have one: {"needs_human": True, False or None if it failed, "reason"}
+    ask_human: str = ""  # why the reviewer wants a person, if it added ask_human to its answer
+    error: str = ""  # why the review failed, if it did
+    specialist: dict | None = None  # the specialist's answer, if you have one: {"needs_human": True, False or None if it failed, "preference", "reason"}
 
 
 def load_pr(path: Path) -> Pr:

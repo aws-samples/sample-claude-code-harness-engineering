@@ -7,7 +7,8 @@ human-review-queue.md
 .claude/lab-stage
 .claude/lab-log
 uv.lock
-*.orig
+*.orig*
 .claude/frozen-agent.md
 .claude/settings.local.json
+.claude/last-eval.json
 .DS_Store

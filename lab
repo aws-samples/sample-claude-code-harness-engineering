@@ -2,8 +2,10 @@
 """The one command for the labs. Run ./lab with no arguments to see where you are."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import runpy
 import shutil
 import subprocess
@@ -18,38 +20,47 @@ from my_work import todos_left  # noqa: E402
 
 STAGE, LOG = Path(".claude/lab-stage"), Path(".claude/lab-log")
 AGENT, FROZEN = Path("my-work/3-reviewer-agent.md"), Path(".claude/frozen-agent.md")
+LAST_EVAL = Path(".claude/last-eval.json")
 STARTER = "TODO: don't write this by hand"
-SEALED = ["data/review-prs/lead-labels.csv", "data/review-prs/holdout"]
+LABELS, HOLDOUT, GATE = "data/review-prs/lead-labels.csv", "data/review-prs/holdout", "data/review-prs/gate"
+OPENS = {"scorer": [LABELS], "improve": [LABELS], "gate": [LABELS, GATE]}  # what each stage opens from the sealed tag
+TAGS = ["sealed", "after-checks", "after-reviewer", "after-scorer", "after-improve", "after-gate"]
+ASK_HUMAN = ('If you\'ve read the code and still can\'t tell whether a rule is broken, add `"ask_human": "why, in one sentence"` to your JSON. '
+             "Leave it out when you're sure, either way.")
 CHUNKS: dict[str, dict] = json.loads(Path(".claude/lab-beats.json").read_text())["chunks"]
 ORDER = list(CHUNKS)
 CATCH_UP = {
-    "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"]),
-    "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"]),
-    "eval": ("after-eval", ["scripts/score.py"]),
-    "gate": ("after-gate", ["scripts/gate.py", "my-work/6-gate-agent.md"]),
+    "checks": ("after-checks", ["scripts/checks.py", ".githooks/pre-commit"], "Run ./lab test-checks to see them work, then ./lab next."),
+    "reviewer": ("after-reviewer", ["my-work/3-reviewer-agent.md"], "Try it with ./lab review try, then ./lab next."),
+    "scorer": ("after-scorer", ["scripts/score.py"], "Read it, run ./lab test-scorer, then ./lab next."),
+    "improve": ("after-improve", ["my-work/3-reviewer-agent.md"], "Compare it with yours, then run ./lab holdout."),
+    "gate": ("after-gate", ["scripts/gate.py", "my-work/6-gate-agent.md"], "Now run ./lab pipeline, then ./lab loop pr-03."),
 }
 HELP = """Move through the lab
   ./lab                    where you are, and what's left
   ./lab next               the next chunk
   ./lab goto CHUNK         jump to any chunk: {chunks}
-  ./lab catch-up CHUNK     take our working version: checks, reviewer, eval, gate
+  ./lab catch-up CHUNK     take our working version: checks, reviewer, scorer, improve, gate
+  ./lab doctor             check this machine is ready
 
 Build and test
   ./lab test-checks        run your checks on our test cases and the check PRs
-  ./lab review try         run your agent on the practice PRs
-  ./lab eval               run your agent on the sixteen dev PRs, and score it
-  ./lab holdout            the fair test: freeze your agent, run it on the held-out PRs, and score it
-  ./lab test-gate          run your human gate against tricky situations
-  ./lab pipeline [holdout] the whole system on the dev PRs: checks, agent, then gate
+  ./lab review try         run your reviewer on the practice PRs
+  ./lab test-scorer        try your scorer on fake reviewers
+  ./lab eval [--note TEXT] run your reviewer on the sixteen dev PRs, and score it
+  ./lab holdout            freeze your reviewer and run it once on the holdout PRs
+  ./lab test-gate          test your gate on edge cases
+  ./lab pipeline           the whole system: checks, reviewer, then gate
+  ./lab loop PR            Claude fixes a PR until it merges or goes to a person
 
 More control
-  ./lab review SET         run your agent on one set: try, dev, design or holdout
-  ./lab score [holdout]    score the last review
+  ./lab review SET         run your reviewer on one set: try, dev or design
+  ./lab score [holdout]    score the last run again
 
 See the service
-  ./lab demo               run the app at http://localhost:8000
-  ./lab demo PR            run it with one PR applied, such as ./lab demo pr-01
-  ./lab demo --trouble provider   make a stand-in service misbehave: provider, bookings or worker"""
+  ./lab demo               run the app on port 8000
+  ./lab demo PR            run it with one PR applied, such as ./lab demo try-1
+  ./lab demo --trouble provider   make a fake service fail: provider, bookings or worker"""
 
 
 def current() -> str:
@@ -73,16 +84,22 @@ def show(chunk: str) -> None:
     print(f"  Done when:  {spec['done']}\n")
 
 
-def unseal(chunk: str) -> None:
-    """The lead's labels and the held-out PRs wait in a tag until their chunk."""
-    paths = {"label": SEALED[:1], "eval": SEALED[:1], "holdout": SEALED, "gate": SEALED}.get(chunk, [])
+def unseal(paths: list[str]) -> bool:
+    """The labels, the holdout and the gate PRs wait in the sealed tag until they're needed. Restored, not staged,
+    so that the person's next commit doesn't sweep them in."""
     missing = [path for path in paths if not Path(path).exists()]
     if not missing:
-        return
-    if subprocess.run(["git", "checkout", "sealed", "--", *missing], capture_output=True).returncode == 0:
+        return True
+    if subprocess.run(["git", "restore", "--source=sealed", "--worktree", "--", *missing], capture_output=True).returncode == 0:
+        exclude = Path(".git/info/exclude")  # git's own local ignore list, so that no `git add -A` commits them
+        if exclude.parent.is_dir():
+            known = exclude.read_text().splitlines() if exclude.exists() else []
+            with exclude.open("a") as out:
+                out.writelines(f"/{path}\n" for path in missing if f"/{path}" not in known)
         print(f"Opened: {', '.join(missing)}")
-    else:
-        print(f"Couldn't open {', '.join(missing)}: this repo has no 'sealed' tag, so it was copied without its git tags. Ask your facilitator for a copy made with setup.sh.")
+        return True
+    print(f"Couldn't open {', '.join(missing)}: the repo is missing its git tags. Ask a helper.")
+    return False
 
 
 def go(chunk: str) -> None:
@@ -90,29 +107,12 @@ def go(chunk: str) -> None:
     if previous:
         left = sum(todos_left(path) for path in files_of(previous))
         if left and chunk != previous:
-            print(f"Moving on with {left} TODOs left in {previous}. That's fine: you can come back.")
-    unseal(chunk)
-    if chunk in ("holdout", "gate"):
-        freeze()
+            print(f"{left} TODO{'s' if left != 1 else ''} left in {previous}. You can come back to {'them' if left != 1 else 'it'}.")
+    unseal(OPENS.get(chunk, []))
     STAGE.write_text(chunk + "\n")
     with LOG.open("a") as log:
         log.write(f"{time.time():.0f}\t{chunk}\n")
     show(chunk)
-
-
-def freeze(quiet: bool = False) -> None:
-    """The held-out PRs are a fair test only if the agent can't change once you've seen them, so they run on a copy.
-
-    Until you've run them, the copy is refreshed each time the held-out PRs open, so an early visit doesn't lock in an old agent."""
-    if Path("results-holdout.json").exists() and FROZEN.exists():
-        if not quiet:
-            print(f"Your agent was frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}, and you've run the held-out PRs with it, so that copy stays.")
-    elif not AGENT.exists() or STARTER in AGENT.read_text():
-        if not quiet:
-            print("Your agent isn't written yet, so there's nothing to freeze. Come back here once it is: ./lab goto holdout")
-    else:
-        shutil.copy(AGENT, FROZEN)
-        print("Your agent is frozen: ./lab review holdout uses a copy made now. Edits to your agent from here on don't change the fair test.")
 
 
 def run(script: str, *args: str) -> int:
@@ -133,17 +133,102 @@ def run(script: str, *args: str) -> int:
         sys.argv, sys.path[:] = saved_argv, saved_path
 
 
+def written(agent: Path) -> bool:
+    return agent.exists() and STARTER not in agent.read_text()
+
+
+def scorer_problem() -> str:
+    from eval_reviewer import scorer_problem as problem
+    return problem()
+
+
+def option(args: list[str], name: str) -> tuple[str, list[str]]:
+    """The value after --name, and the other arguments."""
+    if name in args[:-1]:
+        at = args.index(name)
+        return args[at + 1], args[:at] + args[at + 2:]
+    return "", args
+
+
 def review(args: list[str]) -> int:
     if not args or args[0] not in {"try", "dev", "design", "holdout"}:
-        sys.exit("usage: ./lab review try|dev|design|holdout [--agent FILE] [--out FILE]. Your agent is my-work/3-reviewer-agent.md.")
+        sys.exit("usage: ./lab review try|dev|design [--agent FILE] [--out FILE]. Your reviewer is my-work/3-reviewer-agent.md.")
     which, extra = args[0], args[1:]
+    if which == "holdout" and "--out" not in extra:
+        sys.exit("To run the holdout: ./lab holdout. To try another reviewer on it: ./lab review holdout --agent FILE --out FILE")
     command = {
         "try": ["--set", "try", "--out", "results-try.json"],
         "dev": ["--set", "dev", "--out", "results.json"],
         "design": ["--set", "design", "--runs", "3", "--out", "results-design.json"],
-        "holdout": ["--set", "holdout", "--out", "results-holdout.json"],
+        "holdout": ["--set", "holdout"],
     }[which]
     return run("scripts/run_reviewer.py", *command, *extra)
+
+
+def fingerprint(agent: Path, model: str) -> str:
+    return hashlib.sha256(agent.read_bytes() + model.encode()).hexdigest()
+
+
+def evaluate(args: list[str]) -> int:
+    """./lab eval: run the reviewer on the dev PRs and score it, marking what changed since the last run."""
+    if any(arg in ("--runs", "--out") for arg in args):
+        sys.exit("Run ./lab eval twice instead: it shows what changed.")
+    note, args = option(args, "--note")
+    agent, args = option(args, "--agent")
+    if args:
+        sys.exit("usage: ./lab eval [--note \"what you changed\"] [--agent FILE]")
+    if not Path(LABELS).exists():
+        sys.exit("The lead's labels aren't open yet: ./lab goto scorer")
+    if scorer_problem():
+        sys.exit(scorer_problem())
+    import run_reviewer as runner
+    reviewer = Path(agent) if agent else AGENT
+    if not written(reviewer):
+        sys.exit(f"{reviewer} isn't written yet. In Claude, run /interview-reviewer, or take ours with ./lab catch-up reviewer.")
+    try:
+        previous = json.loads(LAST_EVAL.read_text()).get("fingerprint", "")
+    except (OSError, ValueError):
+        previous = ""
+    had_results = Path("results.json").exists()
+    if had_results:
+        shutil.copy("results.json", "results-prev.json")
+    done = review(["dev", "--quiet", *(["--agent", agent] if agent else [])])
+    if done:
+        return done
+    LAST_EVAL.write_text(json.dumps({"fingerprint": fingerprint(reviewer, runner.MODEL), "previous": previous if had_results else ""}))
+    extra = ["--compare", "results-prev.json"] if had_results else []
+    extra += ["--note", note] if note else []
+    extra += ["--agent", agent] if agent else []
+    return run("scripts/eval_reviewer.py", "--record", "--model", runner.MODEL, "--tools", runner.agent_tools(reviewer), *extra)
+
+
+def holdout() -> int:
+    """./lab holdout: freeze the reviewer and run it once on the holdout. Running it again shows the same result."""
+    if not written(AGENT):
+        sys.exit("Your reviewer isn't written yet. In Claude, run /interview-reviewer, or ./lab catch-up reviewer.")
+    if scorer_problem():
+        sys.exit(scorer_problem())
+    import run_reviewer as runner
+    saved = Path("results-holdout.json")
+    score = ["--set", "holdout", "--results", str(saved)]
+    if not saved.exists() or not FROZEN.exists():
+        if not unseal([HOLDOUT, LABELS]):
+            return 1
+        shutil.copy(AGENT, FROZEN)
+        print("Your reviewer is frozen: the holdout runs on a copy made now.")
+        done = run("scripts/run_reviewer.py", "--set", "holdout", "--out", str(saved), "--quiet")
+        if done:
+            return done
+        return run("scripts/eval_reviewer.py", *score, "--record", "--model", runner.MODEL, "--tools", runner.agent_tools(FROZEN))
+    failed = [name for name, answer in json.loads(saved.read_text()).items() if isinstance(answer, dict) and answer.get("verdict") is None]
+    if failed:
+        print(f"Running the {len(failed)} holdout PRs that failed last time again, with your frozen reviewer.")
+        done = run("scripts/run_reviewer.py", "--set", "holdout", "--out", str(saved), "--only", ",".join(failed), "--quiet")
+        if done:
+            return done
+    else:
+        print(f"You've already run the holdout, with your reviewer as it was at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}. Here's that result.\n")
+    return run("scripts/eval_reviewer.py", *score)
 
 
 def serve(cwd: str, options: list) -> int:
@@ -159,16 +244,15 @@ def serve(cwd: str, options: list) -> int:
 def demo(args: list) -> int:
     """Run the app, with one PR's change applied if you name one, so you can see what it does."""
     options = []
-    for option in ("--port", "--trouble"):  # passed on to the server
-        if option in args[:-1]:
-            at = args.index(option)
-            options, args = options + args[at:at + 2], args[:at] + args[at + 2:]
+    for name in ("--port", "--trouble"):  # passed on to the server
+        value, args = option(args, name)
+        options += [name, value] if value else []
     if not args:
         return serve(".", options)
     pr = args[0]
     diffs = sorted(Path("data/review-prs").glob(f"*/{pr}.diff"))
     if not diffs:
-        sys.exit(f"There's no open PR called {pr}. The held-out PRs open with ./lab goto holdout.")
+        sys.exit(f"There's no open PR called {pr}. The holdout and gate PRs open later.")
     copy = Path(tempfile.mkdtemp(prefix=f"demo-{pr}-"))
     shutil.copytree("appointment_reminders", copy / "appointment_reminders", ignore=shutil.ignore_patterns("__pycache__"))
     (copy / "pr.diff").write_text(diffs[0].read_text().partition("\n\n")[2])
@@ -181,22 +265,83 @@ def demo(args: list) -> int:
         shutil.rmtree(copy, ignore_errors=True)
 
 
+def backup(path: Path) -> Path:
+    """The next free .orig, .orig2, ... beside the file, so a second catch-up never overwrites the first backup."""
+    number = 1
+    while True:
+        candidate = Path(f"{path}.orig{number if number > 1 else ''}")
+        if not candidate.exists():
+            return candidate
+        number += 1
+
+
+def add_ask_human(path: Path) -> None:
+    """Gives the reviewer the H4 line, before its closing JSON instructions, if it doesn't have it."""
+    text = path.read_text()
+    if "ask_human" in text:
+        return
+    saved = backup(path)
+    shutil.copy(path, saved)
+    lines = text.splitlines()
+    at = max((i for i, line in enumerate(lines) if line.startswith("End every reply")), default=len(lines))
+    lines[at:at] = [ASK_HUMAN, ""] if at < len(lines) else ["", ASK_HUMAN]
+    path.write_text("\n".join(lines) + "\n")
+    print(f"Added the ask_human line to {path}, for H4. Yours is saved as {saved.name}.")
+
+
 def catch_up(chunk: str) -> int:
     if chunk not in CATCH_UP:
         sys.exit(f"usage: ./lab catch-up {'|'.join(CATCH_UP)}")
-    tag, paths = CATCH_UP[chunk]
+    tag, paths, then = CATCH_UP[chunk]
+    saved = []
     for path in map(Path, paths):
-        backup = Path(f"{path}.orig")
-        if path.exists() and not backup.exists():
-            shutil.copy(path, backup)
-    code = subprocess.run(["git", "checkout", tag, "--", *paths]).returncode
+        if path.exists():
+            target = backup(path)
+            shutil.copy(path, target)
+            saved.append(target.name)
+    code = subprocess.run(["git", "restore", f"--source={tag}", "--worktree", "--", *paths]).returncode
     if code:
         return code
     if chunk == "checks":
         subprocess.run(["git", "config", "core.hooksPath", ".githooks"], check=True)
-    print(f"Replaced with our working version: {', '.join(paths)}. Yours are saved beside them as .orig.")
-    print("Read ours for two minutes, then ./lab next.")
+    print(f"Replaced with our working version: {', '.join(paths)}.{' Yours are saved as ' + ', '.join(saved) + '.' if saved else ''}")
+    if chunk == "gate":
+        add_ask_human(AGENT)
+    print(then)
     return 0
+
+
+def doctor() -> int:
+    """Checks this machine has what the lab needs, with the fix for anything missing."""
+    import run_reviewer as runner
+    failures = 0
+
+    def report(ok: bool, what: str, fix: str = "") -> None:
+        nonlocal failures
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} {what}{'' if ok else '. ' + fix}")
+
+    report(sys.version_info >= (3, 9), f"Python {sys.version.split()[0]}", "Install Python 3.9 or newer.")
+    git = re.search(r"(\d+)\.(\d+)", subprocess.run(["git", "--version"], capture_output=True, text=True).stdout)
+    report(bool(git) and (int(git.group(1)), int(git.group(2))) >= (2, 23), f"git {git.group(0) if git else 'not found'}", "Install git 2.23 or newer.")
+    report(shutil.which("uv") is not None, "uv", "Install uv: https://docs.astral.sh/uv/")
+    report(shutil.which("claude") is not None, "claude", "Install Claude Code, and check it's on your PATH.")
+    tags = subprocess.run(["git", "tag"], capture_output=True, text=True).stdout.split()
+    missing = [tag for tag in TAGS if tag not in tags]
+    report(not missing, "git tags", f"Missing {', '.join(missing)}. This copy wasn't made with setup.sh: ask a helper.")
+    if shutil.which("uv"):
+        done = subprocess.run(["uv", "run", "--quiet", "python", "-c", "import httpx"], capture_output=True, text=True)
+        report(done.returncode == 0, "the workshop's packages", (done.stderr.strip().splitlines() or [""])[-1])
+    env, auth = runner.settings_env(), runner.settings_auth()
+    print(f"     sign-in: {'Bedrock, ' + env.get('AWS_REGION', 'no region') if env.get('CLAUDE_CODE_USE_BEDROCK') == '1' else 'the Claude API'}"
+          f"{', with ' + ', '.join(auth) if auth else ''}")
+    if shutil.which("claude"):
+        with tempfile.TemporaryDirectory() as empty:
+            for model in ("haiku", "sonnet", "opus"):
+                reply = runner.run_claude("Reply with the word OK.", "Reply with the word OK and nothing else.", "", empty, model)
+                report("error" not in reply and bool(reply.get("result")), f"a call to {model}", str(reply.get("error", "no reply"))[:200])
+    print("Ready." if not failures else f"{failures} to fix.")
+    return 1 if failures else 0
 
 
 def main(args: list[str]) -> int:
@@ -213,37 +358,43 @@ def main(args: list[str]) -> int:
     elif command == "next":
         now = current()
         if now == ORDER[-1]:
-            print("That's the last chunk. You're finished when its 'Done when' is true.")
+            print("This is the last chunk.")
             return 0
+        if now == "improve" and not Path("results-holdout.json").exists():
+            print("Run ./lab holdout first. To skip it: ./lab goto gate")
+            return 1
         go(ORDER[ORDER.index(now) + 1] if now else ORDER[0])
     elif command == "goto" and rest and rest[0] in CHUNKS:
         go(rest[0])
     elif command == "catch-up" and rest:
         return catch_up(rest[0])
+    elif command == "doctor":
+        return doctor()
     elif command == "test-checks":
         return run("scripts/test_checks.py")
+    elif command == "test-scorer":
+        return run("scripts/test_scorer.py")
     elif command == "test-gate":
-        unseal("gate")
-        if not FROZEN.exists():
-            freeze(quiet=True)
-        return run("scripts/test_gate.py")
+        return run("scripts/test_gate.py") if unseal([GATE]) else 1
     elif command == "review":
         return review(rest)
     elif command == "eval":
-        done = review(["dev", *rest])
-        return done or run("scripts/eval_reviewer.py")
+        return evaluate(rest)
     elif command == "holdout":
-        if current() not in ("holdout", "gate"):
-            go("holdout")
-        done = review(["holdout"])
-        return done or run("scripts/eval_reviewer.py", "--set", "holdout", "--results", "results-holdout.json")
+        return holdout()
     elif command == "score":
         which = ["--set", "holdout", "--results", "results-holdout.json"] if rest[:1] == ["holdout"] else [*rest]
         return run("scripts/eval_reviewer.py", *which)
     elif command == "demo":
         return demo(rest)
     elif command == "pipeline":
-        return run("scripts/review_pipeline.py", "--set", rest[0] if rest else "dev")
+        if rest:
+            sys.exit("usage: ./lab pipeline. It runs the dev PRs and the gate PRs.")
+        return run("scripts/review_pipeline.py") if unseal([LABELS, GATE]) else 1
+    elif command == "loop":
+        if not rest:
+            sys.exit("usage: ./lab loop PR, such as ./lab loop pr-03")
+        return run("scripts/loop.py", rest[0]) if unseal([LABELS, GATE]) else 1
     else:
         print(HELP.format(chunks=" ".join(ORDER)))
         return 1

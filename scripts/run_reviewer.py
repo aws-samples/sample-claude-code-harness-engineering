@@ -2,19 +2,21 @@
 """Run your reviewer agent over a set of PRs and write what it said.
 
   ./lab review dev   is the usual way in. Directly:
-  python3 scripts/run_reviewer.py --set dev [--only pr-01,pr-05] [--out results.json] [--agent FILE] [--runs 3]
+  python3 scripts/run_reviewer.py --set dev [--only pr-01,pr-05] [--out results.json] [--agent FILE] [--runs 3] [--quiet]
 
-Every call is a fresh headless Claude Code session with only the agent file as its system prompt, so nothing
-in this session can leak into the answer. The agent's `tools:` line decides what else it can use: with none
+Every call is a fresh headless Claude Code session with only the reviewer file as its system prompt, so nothing
+in this session can leak into the answer. The reviewer's `tools:` line decides what else it can use: with none
 it sees only the PR, and with Read, Grep, Glob it can also look through a copy of the code.
-The agent must end its reply with one JSON object:
+The reviewer must end its reply with one JSON object:
   {"verdict": "approve" | "request_changes", "findings": [{"rule": "R5", "why": "..."}]}
+and may add "ask_human": "why, in one sentence" when it can't tell.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -28,43 +30,63 @@ ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)  # paths are repo-relative wherever this is run from
 
 AGENT = Path("my-work/3-reviewer-agent.md")
-GATE_AGENT = Path("my-work/6-gate-agent.md")  # the specialist gate agent, if you chose one
-FROZEN = Path(".claude/frozen-agent.md")  # ./lab next copies your agent here when the held-out run opens
+GATE_AGENT = Path("my-work/6-gate-agent.md")  # the specialist, if you chose one
+FROZEN = Path(".claude/frozen-agent.md")  # ./lab holdout copies your reviewer here before it runs
 MODEL_ALIASES = ("haiku", "sonnet", "opus", "fable")
 MODEL_ID = re.compile(r"(?:[a-z]{2,6}\.)?(?:anthropic\.)?claude-[a-z0-9][a-z0-9.-]{0,62}(?::[0-9]{1,3})?")  # claude-sonnet-5-5, or Bedrock's global.anthropic.claude-sonnet-5-5
 READ_TOOLS = ("Read", "Grep", "Glob")  # the lab's two modes: no tools, or these
-ALERT_TOOL = "mcp__gate__alert_human"
 TIMEOUT_SECONDS = 180
+WORKERS = max(1, int(os.environ.get("LAB_WORKERS", "5") or 5))  # calls at once: lower it if your account is throttled
+AUTH_KEYS = ("awsAuthRefresh", "awsCredentialExport", "apiKeyHelper")  # how some setups sign in to Bedrock or the API
 STARTER = "TODO: don't write this by hand"
 
 
-def pick_model(requested: str) -> str:
-    """LAB_REVIEW_MODEL, checked against model names. It reaches claude through a settings file, never the command line."""
+def pick_model(requested: str, variable: str = "LAB_REVIEW_MODEL") -> str:
+    """A model name from an environment variable, checked. It reaches claude through a settings file, never the command line."""
     for alias in MODEL_ALIASES:
         if requested == alias:
             return alias
     if MODEL_ID.fullmatch(requested):
         return requested
-    raise SystemExit(f"LAB_REVIEW_MODEL={requested!r} isn't a model name. Use one of {', '.join(MODEL_ALIASES)}, or a full id like claude-sonnet-5-5 or a Bedrock id.")
+    raise SystemExit(f"{variable}={requested!r} isn't a model name. Use one of {', '.join(MODEL_ALIASES)}, or a full id like claude-sonnet-5-5 or a Bedrock id.")
 
 
 MODEL = pick_model(os.environ.get("LAB_REVIEW_MODEL", "haiku"))
+AUTHOR_MODEL = pick_model(os.environ.get("LAB_AUTHOR_MODEL", "haiku"), "LAB_AUTHOR_MODEL")  # the Claude that fixes PRs in ./lab loop
+
+
+def _settings_files() -> list[dict]:
+    """Claude Code's settings files, in its order: yours, then the project's, then local. Unreadable ones are skipped."""
+    user_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    found = []
+    for path in (user_dir / "settings.json", ROOT / ".claude/settings.json", ROOT / ".claude/settings.local.json"):
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue  # missing, unreadable or not a settings file: nothing to carry over
+        if isinstance(data, dict):
+            found.append(data)
+    return found
 
 
 def settings_env() -> dict[str, str]:
-    """The `env` blocks of Claude Code's settings files, merged in its order: yours, then the project's, then local, with later ones winning.
+    """The `env` blocks of the settings files merged, later ones winning.
 
     The reviewer runs with no settings files of its own, so this is how a setup such as Bedrock reaches it.
-    Only `env` carries over: no hooks, permissions or plugins."""
-    user_dir = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    Only `env` and the sign-in keys in AUTH_KEYS carry over: no hooks, permissions or plugins."""
     merged: dict[str, str] = {}
-    for path in (user_dir / "settings.json", ROOT / ".claude/settings.json", ROOT / ".claude/settings.local.json"):
-        try:
-            env = json.loads(path.read_text()).get("env") or {}
-        except (OSError, ValueError, AttributeError):
-            continue  # missing, unreadable or not a settings file: nothing to carry over
+    for data in _settings_files():
+        env = data.get("env") or {}
         if isinstance(env, dict):
             merged.update({str(key): str(value) for key, value in env.items()})
+    return merged
+
+
+def settings_auth() -> dict[str, str]:
+    """The sign-in keys from the settings files, such as awsAuthRefresh, later ones winning."""
+    merged: dict[str, str] = {}
+    for data in _settings_files():
+        merged.update({key: str(data[key]) for key in AUTH_KEYS if data.get(key)})
     return merged
 
 
@@ -125,54 +147,68 @@ def show(name: str, answer: dict, path: Path | None = None) -> None:
         print(f"    {finding.get('rule')}{' ' + more if more else ''}: {finding.get('why', '')}")
 
 
-def run_claude(diff: str, system: str, tools: str, cwd: str, alert_log: str | None = None) -> dict:
+def run_claude(diff: str, system: str, tools: str, cwd: str, model: str = "", author: bool = False) -> dict:
     """One headless Claude call. Returns claude's JSON reply, or {"error": ...} when the call failed.
 
-    The claude command line is fixed text. Everything that changes goes in files instead: the system prompt, a
-    settings file with the model and the tools it may use, and the MCP config. The diff goes in on stdin. So no
-    PR, agent file or environment variable can add an option to the command. Each call gets its own folder:
-    the agent works in code/, a copy of the code, and its config sits beside that in config/.
+    The claude command line is fixed text: one for a reviewer with no tools, one with Read, Grep and Glob, and one
+    for the Claude that fixes a PR in ./lab loop. Everything that changes goes in files instead: the system prompt,
+    a settings file with the model and the tools it may use, and the MCP config. The diff goes in on stdin. So no PR,
+    agent file or environment variable can add an option to the command.
+
+    A reviewer works in code/, a copy of cwd made for this call, with its config beside it in config/. The author
+    works in cwd itself, which ./lab loop makes for it, so that its edits can be read back afterwards.
     """
     if shutil.which("claude") is None:
         return {"error": "can't find the claude CLI on your PATH"}
-    allowed = [*tools.split(",")] if tools else []
-    servers: dict = {}
-    if alert_log:  # the human gate's tool: the agent can ask for a person, and the request lands in alert_log
-        servers["gate"] = {"command": sys.executable, "args": [str(ROOT / "scripts/alert_human_server.py")], "env": {"ALERT_LOG": alert_log}}
-        allowed.append(ALERT_TOOL)
+    allowed = ["Read", "Grep", "Glob", "Edit(appointment_reminders/**)", "Write(appointment_reminders/**)"] if author else [*tools.split(",")] if tools else []
     with tempfile.TemporaryDirectory(prefix="review-call-") as call:
-        work, config = Path(call, "code"), Path(call, "config")
-        shutil.copytree(cwd, work)
-        config.mkdir()
+        if author:
+            work = Path(cwd)
+            config = work.parent / "config"
+        else:
+            work, config = Path(call, "code"), Path(call, "config")
+            shutil.copytree(cwd, work)
+        config.mkdir(exist_ok=True)
         (config / "system.md").write_text(system)
-        (config / "settings.json").write_text(json.dumps({"model": MODEL, "env": settings_env(), "permissions": {"allow": allowed}}))
-        (config / "mcp.json").write_text(json.dumps({"mcpServers": servers}))
-        try:
-            if tools:
-                done = subprocess.run(
-                    ["claude", "-p", "--tools=Read,Grep,Glob", "--output-format=json", "--system-prompt-file=../config/system.md",
-                     "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
-                     "--setting-sources=", "--no-session-persistence"],
-                    input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
-            else:
-                done = subprocess.run(
-                    ["claude", "-p", "--tools=", "--output-format=json", "--system-prompt-file=../config/system.md",
-                     "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
-                     "--setting-sources=", "--no-session-persistence"],
-                    input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
-            return json.loads(done.stdout)
-        except subprocess.CalledProcessError as exc:
-            return {"error": f"claude failed: {(exc.stderr or exc.stdout or '').strip()[:200]}"}
-        except subprocess.TimeoutExpired:
-            return {"error": f"no answer after {TIMEOUT_SECONDS} seconds"}
-        except (ValueError, OSError) as exc:
-            return {"error": f"couldn't read the reply: {str(exc)[:120]}"}
+        settings = {"model": model or MODEL, "env": settings_env(), "permissions": {"allow": allowed}, **settings_auth()}
+        (config / "settings.json").write_text(json.dumps(settings))
+        (config / "mcp.json").write_text(json.dumps({"mcpServers": {}}))
+        for attempt in range(2):  # one retry, for a throttled or briefly unavailable model
+            try:
+                if author:
+                    done = subprocess.run(
+                        ["claude", "-p", "--tools=Read,Grep,Glob,Edit,Write", "--output-format=json", "--system-prompt-file=../config/system.md",
+                         "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
+                         "--setting-sources=", "--no-session-persistence"],
+                        input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
+                elif tools:
+                    done = subprocess.run(
+                        ["claude", "-p", "--tools=Read,Grep,Glob", "--output-format=json", "--system-prompt-file=../config/system.md",
+                         "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
+                         "--setting-sources=", "--no-session-persistence"],
+                        input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
+                else:
+                    done = subprocess.run(
+                        ["claude", "-p", "--tools=", "--output-format=json", "--system-prompt-file=../config/system.md",
+                         "--settings=../config/settings.json", "--mcp-config=../config/mcp.json", "--strict-mcp-config",
+                         "--setting-sources=", "--no-session-persistence"],
+                        input=diff, capture_output=True, text=True, timeout=TIMEOUT_SECONDS, check=True, cwd=work)
+                return json.loads(done.stdout)
+            except subprocess.CalledProcessError as exc:
+                if attempt == 0:
+                    time.sleep(5 + random.uniform(0, 5))  # jitter, so a room of retries doesn't arrive together
+                    continue
+                return {"error": f"claude failed: {(exc.stderr or exc.stdout or '').strip()[:200]}"}
+            except subprocess.TimeoutExpired:
+                return {"error": f"no answer after {TIMEOUT_SECONDS} seconds"}
+            except (ValueError, OSError) as exc:
+                return {"error": f"couldn't read the reply: {str(exc)[:120]}"}
+    return {"error": "claude failed"}
 
 
-
-def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None = None) -> dict:
+def review(diff: str, system: str, tools: str, cwd: str) -> dict:
     """The reviewer's verdict, or {"verdict": None, ...} when the call or its JSON failed."""
-    reply = run_claude(diff, system, tools, cwd, alert_log)
+    reply = run_claude(diff, system, tools, cwd)
     if "error" in reply:
         return {"verdict": None, "findings": [], "error": reply["error"]}
     try:
@@ -186,7 +222,7 @@ def review(diff: str, system: str, tools: str, cwd: str, alert_log: str | None =
 
 
 def gate_check(diff: str, system: str, tools: str, cwd: str) -> dict:
-    """The specialist gate agent's answer: {"needs_human": True or False, "reason"}, or needs_human None when it failed."""
+    """The specialist's answer: {"needs_human": True or False, "preference", "reason", ...}, or needs_human None when it failed."""
     reply = run_claude(diff, system, tools, cwd)
     if "error" in reply:
         return {"needs_human": None, "reason": "", "error": reply["error"]}
@@ -194,7 +230,7 @@ def gate_check(diff: str, system: str, tools: str, cwd: str) -> dict:
         answer = last_json(reply["result"] or "", "needs_human")
         if not isinstance(answer["needs_human"], bool):
             raise ValueError(f"needs_human is {answer['needs_human']!r}, not true or false")
-        return {"needs_human": answer["needs_human"], "reason": str(answer.get("reason", "")), "cost": reply.get("total_cost_usd", 0)}
+        return {**answer, "needs_human": answer["needs_human"], "reason": str(answer.get("reason", "")), "cost": reply.get("total_cost_usd", 0)}
     except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
         return {"needs_human": None, "reason": "", "error": f"couldn't read the reply: {str(exc)[:120]}"}
 
@@ -205,10 +241,10 @@ def written(agent: Path) -> bool:
 
 def blocked(pr_set: str, chunk: str) -> str | None:
     """Why this set is still closed. One command opens it: these only stop you spoiling your own measurement by accident."""
-    if pr_set in ("dev", "design") and chunk in ("sort", "checks", "reviewer", "label"):
-        return "Hold on: running the agent on these before you've labeled them lets its answers steer yours. To go ahead anyway: ./lab goto eval"
+    if pr_set in ("dev", "design") and chunk in ("sort", "checks", "reviewer"):
+        return "These PRs are for Part 2. To go ahead anyway: ./lab goto scorer"
     if pr_set == "holdout" and not Path("data/review-prs/holdout").exists():
-        return "Hold on: these are your fair test, so your agent gets frozen first. When you're ready: ./lab goto holdout"
+        return "The holdout is sealed. To run it: ./lab holdout"
     return None
 
 
@@ -235,25 +271,26 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=1, help="review each PR this many times, to see how much answers vary")
     parser.add_argument("--only", default="", help="comma-separated PR names")
     parser.add_argument("--out", default="results.json")
-    parser.add_argument("--agent", default="", help="agent file, if you want to try another one. The held-out set uses your frozen agent unless you give one")
+    parser.add_argument("--agent", default="", help="reviewer file, if you want to try another one. The holdout uses your frozen copy unless you give one")
+    parser.add_argument("--quiet", action="store_true", help="print only progress, warnings and cost, not every finding")
     args = parser.parse_args()
     reason = blocked(args.set, chunk_now())
     if reason:
         raise SystemExit(reason)
     agent = Path(args.agent) if args.agent else FROZEN if args.set == "holdout" else AGENT
     if agent == FROZEN and not FROZEN.exists():
-        raise SystemExit("Your agent hasn't been frozen yet. Once my-work/3-reviewer-agent.md is written: ./lab goto holdout")
+        raise SystemExit("Your reviewer hasn't been frozen yet. To run the holdout: ./lab holdout")
     check_agent(agent)
     if agent == FROZEN:
-        print(f"Using your agent as it was frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}, for a fair test.")
+        print(f"Using the copy of your reviewer frozen at {time.strftime('%H:%M', time.localtime(FROZEN.stat().st_mtime))}.")
     paths = pr_paths(args.set, args.only)
     if not paths:
-        raise SystemExit(f"No PRs here for {args.set} {args.only}. If this set isn't open yet: ./lab goto {'holdout' if args.set == 'holdout' else 'eval'}")
+        raise SystemExit(f"No PRs here for {args.set} {args.only}. If this set isn't open yet: {'./lab holdout' if args.set == 'holdout' else './lab goto scorer'}")
     runs = f", {args.runs} times each" if args.runs > 1 else ""
-    print(f"Reviewing {len(paths)} PR{'s' if len(paths) != 1 else ''}{runs}. Each is a fresh Claude call, so this can take a minute.", flush=True)
+    print(f"Reviewing {len(paths)} PR{'s' if len(paths) != 1 else ''}{runs} (about a minute).", flush=True)
     system, tools, code = system_prompt(agent), agent_tools(agent), code_copy()
     jobs = [path for path in paths for _ in range(args.runs)]
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         answers = list(pool.map(lambda p: review(p.read_text(), system, tools, code), jobs))
     shutil.rmtree(code, ignore_errors=True)
     if all(a["verdict"] is None for a in answers):
@@ -264,19 +301,23 @@ def main() -> int:
         results = {path.stem: [a for job, a in zip(jobs, answers) if job == path] for path in paths}
         for name, reviews in results.items():
             for number, answer in enumerate(reviews, 1):
-                show(f"{name} run {number}", answer, by_name[name] if number == 1 else None)
+                if not args.quiet:
+                    show(f"{name} run {number}", answer, by_name[name] if number == 1 else None)
     else:
         results = {p.stem: a for p, a in zip(paths, answers)}
         for name, answer in results.items():
-            show(name, answer, by_name[name])
+            if not args.quiet:
+                show(name, answer, by_name[name])
     out = Path(args.out)
     merged = {**(json.loads(out.read_text()) if args.only and out.exists() else {}), **results}  # --only updates, it doesn't wipe
     out.write_text(json.dumps(merged, indent=2))
     failed = sum(1 for a in answers if a["verdict"] is None)
     if failed:
-        print(f"WARNING: {failed} calls failed. If it says it couldn't read the reply, check that your agent still ends with the JSON object. Otherwise rerun, and tell your facilitator if it keeps happening.")
+        first = next(a.get("error", "") for a in answers if a["verdict"] is None)
+        print(f"{failed} calls failed. Check your reviewer still ends with the JSON object, then rerun. Ask a helper if it keeps happening. The first error: {first}")
     print(f"cost ${sum(a.get('cost', 0) for a in answers):.3f} for {len(answers)} reviews, tools: {tools or 'none'}")
-    print(f"wrote {args.out}")
+    if not args.quiet:
+        print(f"wrote {args.out}")
     return 0
 
 

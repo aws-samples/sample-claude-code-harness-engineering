@@ -89,8 +89,12 @@ def main() -> None:
     logging.basicConfig(format="%(asctime)s %(levelname)-7s %(name)s: %(message)s", datefmt="%H:%M:%S", level=logging.WARNING)
     logging.getLogger("appointment_reminders").setLevel(logging.DEBUG)
     load_routes()
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(world))
-    print(f"Appointment reminders is running at http://{args.host}:{args.port}  (Ctrl-C to stop)", flush=True)
+    try:
+        server = ThreadingHTTPServer((args.host, args.port), make_handler(world))
+    except OSError:
+        raise SystemExit(f"Port {args.port} is already in use, probably by another demo. Stop that one with Ctrl-C in its terminal, or use --port 8001.")
+    print(f"Appointment reminders is running on port {args.port}  (Ctrl-C to stop)", flush=True)
+    print("Click Open in Browser, or open this port from the Ports tab.", flush=True)
     for name in sorted(world.trouble.on):
         print(f"Simulating trouble: {world.trouble.NAMES[name]}", flush=True)
     print("The service's logs appear below.", flush=True)

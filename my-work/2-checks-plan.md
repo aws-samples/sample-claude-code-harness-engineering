@@ -1,6 +1,6 @@
 # 2. Plan the checks
 
-Run `/plan-checks` in Claude. It asks you three questions, writes your answers here, then builds your checks and the pre-commit hook. You can edit this file afterwards, and ask Claude to update the checks to match.
+Run `/plan-checks` in Claude and it will fill this in with you.
 
 ## Which rules get a check, and does each one block or warn?
 
@@ -12,6 +12,6 @@ Run `/plan-checks` in Claude. It asks you three questions, writes your answers h
 
 TODO
 
-## How Claude is stopped from cheating
+## How will you stop Claude cheating?
 
 TODO

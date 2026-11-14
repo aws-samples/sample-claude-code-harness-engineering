@@ -1,137 +1,148 @@
-# Part 2: Can you trust your reviewer?
+# Part 2: Measure your reviewer and close the loop
 
 ## Introduction
 
-In Part 1 you built two kinds of review. Your deterministic checks are easy to trust: you tested them on known cases, and they give the same answer every time. Your reviewer agent is different. It makes judgments, and its answers can change from one run to the next. Its answers on the practice PRs looked sensible, but how do you check that it's making good judgments?
+In Part 1 you built deterministic checks and a reviewer agent. The checks give the same answer every time, but the reviewer makes judgment calls that can change between runs. You need to measure how good it is before you let it decide what merges.
 
-In Part 1 you met the idea of a judge: a model that assesses something against a rubric. Your reviewer is the judge in your loop. Now you need a way to check the judge. You do that with an eval: run the reviewer on PRs where a good answer is already known, and score how close it gets. On a real codebase, an obvious source of good answers is past reviews by experienced developers. Another is past PRs that turned out to be risky and that a person *didn't* catch: changes that slipped through and led to a real incident or rollback.
+In chunk 4 you'll build a scorer for your reviewer, and in chunk 5 you'll use it to make the reviewer better. In chunk 6 you'll put everything together, so that Claude gets feedback on a PR and fixes it until it either merges or goes to a person. Part 2 takes about 45 minutes.
 
-In Part 2, you will:
+## Chunk 4: Build a scorer (12 min)
 
-4. **Design how to score your reviewer.** For today, we're providing some past PRs with good answers. Based on them, you'll think about how to score your reviewer against them.
-5. **Build the scorer, and improve your reviewer.** Based on your design, Claude builds the scorer, and you test your reviewer against it. Seeing where your reviewer does badly helps you improve it. At the end, you test it on a held-out set of PRs with good answers that the reviewer hasn't seen before. That checks that you haven't improved it only on the narrow set of PRs you've been testing it against.
-6. **Decide what happens next.** Once a PR Claude wrote has passed your deterministic checks *and* your reviewer, you need to decide what to do with it: let it merge, or send it to a person for review. You'll build a gate that decides which PRs go to a person.
+In this chunk you'll decide how to score your reviewer. Claude will interview you and then write the code, and you'll use it in chunk 5.
 
-**Part 2 is about 45 minutes, in three chunks of 15.** It carries straight on from Part 1, with the agent you built there.
+### What is an eval?
 
-### How an eval works
-
-An eval needs two things for each PR: a good answer, and your reviewer's answer. Comparing them gives a result for that PR, and adding up the results gives your measures:
+An eval is a test suite for an agent. You run the agent on cases where you already know a good answer, compare what it says with that answer, and add up the results into a score. In Part 1 your reviewer was judging PRs. The eval is how you judge the reviewer.
 
 ![How an eval scores your reviewer](assets/eval-scoring.svg)
 
-**A gold label is a good answer for one PR,** decided by a person before the agent runs. Here, the team lead has reviewed sixteen past PRs. Each label says whether the PR needs changes, which rule it breaks, and why. Here are three examples:
+### What is a gold set?
 
-| PR | Needs changes? | Rule | The lead's reason |
-|---|---|---|---|
-| pr-01 | yes | R5 | `set_appointment_time` also emails the customer, so a retry can email twice. The PR says it's idempotent |
-| pr-02 | no | | Twin of pr-01, same wording: `set_contact_preference` is a plain PUT |
-| pr-13 | yes | R6 | `Reminder` is a dataclass, so `%s` prints `customer_email` |
+A gold set is the collection of test cases and their good answers. Here each case is a past PR, and its answer is a **label** written by the team lead. The label says whether the PR needed changes, which rule it broke and why. For example:
 
-pr-01 and pr-02 look almost the same, and only one of them is a problem. The difference is in the code each one calls, which the diff doesn't show. A reviewer that flags both, or neither, is guessing.
+| PR | What it does | Needs changes? | Rule | The lead's reason |
+|---|---|---|---|---|
+| pr-01 | Retries appointment moves on timeout | yes | R5 | `set_appointment_time` also emails the customer, so a retry can email twice |
+| pr-02 | Retries channel changes on timeout | no | | `set_contact_preference` is a plain PUT, so it's safe to repeat |
+| pr-13 | Logs reminders as they're queued | yes | R6 | `Reminder` is a dataclass, so `%s` prints `customer_email` |
 
-**Scoring compares the label and the answer for each PR,** and puts it in one of these:
+Your score is only as useful as your gold set. We built this one so that a reviewer can't do well by guessing:
+
+- **Half the PRs are fine.** If every PR had a problem, a reviewer that flags everything would get a perfect score.
+- **Most PRs come in similar pairs.** pr-01 and pr-02 add almost the same retry loop, and only one is a problem. A reviewer has to understand the code to get both right.
+- **It covers the rules that need judgment:** R1, R3, R5, R6, R8, R9, R11 and R12. No PR is labeled R13, so blocking a fine PR on R13 counts as a false alarm.
+- **It's split in two.** You tune your reviewer on sixteen `dev` PRs. Another sixteen, the `holdout`, stay sealed until the end of chunk 5, so you can check it works on PRs you didn't tune it on.
+
+On a real codebase, you'd build a gold set from past code reviews by experienced developers, and from PRs that passed review but later caused an incident or rollback.
+
+### What does the scorer do?
+
+You are going to work with Claude to build a scorer, which evaluates the performance of your reviewer against the test PRs. It's a short Python script. For each PR, it compares your reviewer's answer with the label and gives it a result:
 
 | | Your reviewer asked for changes | Your reviewer approved |
 |---|---|---|
-| **The label says it needs changes** | Caught, if it named the right rule. If it named a different rule, it had the right verdict for the wrong reason | Missed |
-| **The label says it's fine** | False alarm | Correctly approved |
+| **The label says it needs changes** | Caught | **Miss** (false negative): the problem merges |
+| **The label says it's fine** | **False alarm** (false positive): Claude reworks good code | Correct |
 
-Then you choose measures that say what you care about, such as how many of the eight problem PRs it caught, and how many false alarms it raised on the eight clean ones. You'll decide what yours are in chunk 4.
+Then it adds the results up into measures. You need more than one, because a single number is easy to game. Both of these fake reviewers agree with the lead on half the PRs, and each looks perfect on one measure:
 
-**One number isn't enough.** Half the sixteen PRs are clean, so a reviewer that approves everything agrees with the labels half the time, and so does one that flags everything. The lab comes with both, as canned answers, and here's how our scorer sees them:
-
-| Canned reviewer | Caught | False alarms |
+| Fake reviewer | Caught | False alarms |
 |---|---|---|
 | Approves every PR | 0 of 8 | 0 of 8 |
-| Flags every PR, on every rule | 8 of 8 | 8 of 8 |
+| Flags every PR | 8 of 8 | 8 of 8 |
 
-Each looks perfect on one measure and useless on the other. A good reviewer has to do well on both.
+### Your decisions
 
-**Two sets of PRs, for two jobs.** You improve your reviewer on the sixteen dev PRs, the ones with the lead's labels, looking at what it gets wrong each time. That makes it better at those sixteen, but maybe only those: it can learn the PRs rather than the rules. So eight more PRs, the held-out set, stay sealed until the end, and you run your reviewer on them once, as a fair test.
+Claude will ask you these three questions in the interview. If you aren't sure, give your best guess.
 
-## Chunk 4: Design the eval (15 min)
-
-Now you need to decide how to score your reviewer against the lead's good answers. You don't need to read all sixteen: they're in `data/review-prs/lead-labels.csv` if you want them, and Claude can walk you through any of them. For simplicity, Claude will build the scorer for you in chunk 5. Your job here is to design it.
-
-Here are the decisions you need to make, and why they matter. Claude will ask you for your view on each. It's fine if you aren't sure: give your best guess, based on your intuition about what a good reviewer does.
-
-- **What makes a review good?** Think about what a good reviewer does before you think about metrics. Catching problems is one part, and staying quiet on clean work is another.
-- **What counts as right on one PR?** If the lead says a PR breaks R5, and your reviewer asks for changes because of R9, did it catch the problem? It got the verdict right, but a developer would go and fix the wrong thing.
-- **What could make your score lie?** Sixteen PRs is few, and your reviewer's answers vary from run to run. If you keep tuning it to these sixteen, it can get better at them without getting better at reviewing.
-- **How good is good enough, and for which job?** Leaving a comment, blocking a merge and approving with no person are different jobs. A miss and a false alarm cost the team different things, so each job can need a different bar.
-
-**Start:** `./lab next`. It opens the lead's labels.
-
-1. **If it would help, look at a couple of PRs.** Ask Claude to walk you through one and its label, such as `/explain-pr pr-01` and then `/explain-pr pr-02`, the two that look alike. `./lab demo pr-01` runs the app with a PR applied. If you think a label is wrong, you can change it in the file.
-2. **Design the eval.** In Claude, run `/design-eval`. It asks you the four questions above, and writes your answers into `my-work/4-eval-design.md`.
-
-**Done when** there are no TODOs left in `my-work/4-eval-design.md`.
-
-## Chunk 5: Build the eval and improve the agent (15 min)
-
-Now Claude can build the scorer from your design, and you can use it to improve your reviewer. For simplicity, one command runs your reviewer on the sixteen dev PRs and scores it: `./lab eval`. Each score is added to `my-work/notes.md`, so you can see what each change did. You can run it yourself, or ask Claude to run it for you. Your job is to decide what to change, and to make sure the improvements are real.
-
-Improving an agent against an eval is a loop: run it, score it, read what it got wrong, change it, and run it again. Here are the choices worth thinking about, and why they matter:
-
-- **What to change.** You can change the agent's instructions, but also what it can see. For example, some PRs can't be judged correctly from the diff alone, like pr-01 and pr-02. Adding tools such as `Read`, `Grep` and `Glob` lets your reviewer search the wider codebase for context, and could improve its performance. The `tools:` line in your agent decides: blank means only the PR.
-- **Signal or noise?** Your reviewer's answers vary between runs, so one better score can be luck. Running it twice tells you whether a change really helped.
-- **A fix, or a cheat sheet?** Claude will suggest changes to your agent. A line that names a specific PR makes the score better without making the reviewer better, so read every change.
-- **Is the label wrong?** Sometimes the reviewer has a point, and the lead's answer is the one to change.
-
-At the end, you run your reviewer once on the eight held-out PRs, which it has never seen. That's the fair test of whether it learned the rules, or just these sixteen PRs.
+1. **What counts as caught?** The lead says a PR breaks R5. Does your reviewer get credit if it asks for changes but names R9, so Claude would fix the wrong thing?
+2. **What do you measure?** Caught and false alarms are the minimum. Think about what makes a review useful to whoever has to act on it. Is there anything else worth counting?
+3. **What's your bar?** In chunk 6, a PR your reviewer approves could merge without a person reading it. How many misses out of eight would you accept for that, and how many false alarms? Set it now, before you've seen any scores.
 
 **Start:** `./lab next`
 
-1. **Build the scorer with Claude.** Ask Claude: `Help me build my eval scorer.` It builds it from your design in `my-work/4-eval-design.md`, then tries it on the two canned reviewers, one that approves everything and one that flags everything, to show you that neither looks good.
-2. **Get your baseline:** `./lab eval`. It takes about a minute. A perfect score first time is a reason to check your scorer.
-3. **Improve the agent.** Ask Claude to read the misses and false alarms, change the agent, and run `./lab eval` again. Keep the four choices above in mind.
-4. **The fair test (last 3 min):** `./lab holdout`. It freezes a copy of your agent, opens the eight held-out PRs, and runs and scores the frozen copy on them. The copy stays fixed, since changing the agent after seeing these PRs would spoil the test. Eight PRs are too few for a percentage, so read each error rather than the number.
+**Your file:** `my-work/4-eval-design.md`, which Claude fills in with you
 
-**Done when** you can name the change that moved your score most, and you've read any held-out errors.
+1. **Get interviewed.** In Claude, run `/design-eval`. It asks you the three questions, writes your answers into your file and builds the scorer in `scripts/score.py`. To look at a PR and its label first, run `/explain-pr pr-01`.
+2. **Check the scorer.** At the end of the interview, Claude runs `./lab test-scorer`. This tries your scorer on the two fake reviewers above, plus a third that's harder to spot. If your scorer rates the third as perfect, decide with Claude what else to count.
 
-**Short of time?** `./lab catch-up eval` gives you a scorer. Spend the time on the agent.
+**Done when** `./lab test-scorer` passes.
 
-## Chunk 6: Add a human gate (15 min)
+**Short of time?** `./lab catch-up scorer` gives you a working scorer.
 
-Once a PR Claude wrote has passed your checks and been through your reviewer, you need to decide what happens to it. Even a good reviewer shouldn't have the last word on every PR. Some changes the team wants a person to see whatever the reviewer says, like anything touching customer records. And some are cases where the reviewer itself can't be trusted, such as a PR whose description tries to steer it.
+## Chunk 5: Improve your reviewer (18 min)
 
-So you'll add a gate. It runs after the reviewer, and sends each PR one of three ways: to a person, back to Claude to fix what the reviewer found, or on to merge. For simplicity, Claude will build the gate for you. Your job is to decide how it spots the PRs that need a person.
+Now you can score your reviewer and improve it: run it, read what it got wrong, change one thing and run it again. Claude can make the edits. Your job is to decide what to change and check that it helped.
+
+The kind of error usually points to the fix:
+
+| You see | It often means | You could try |
+|---|---|---|
+| False alarms | It's raising nitpicks, hypotheticals or problems that were there before the PR | Telling it how sure to be before asking for changes, and what's out of scope |
+| Misses, or the same answer on similar PRs like pr-01 and pr-02 | The diff doesn't give it enough information | Letting it read the code: `tools: Read, Grep, Glob` |
+| A miss on a rule you gave to your checks | The check can't detect this case, and the rule isn't in your reviewer's instructions | Adding the rule to your reviewer as well |
+
+The score can also mislead you:
+
+- **Noise.** The same reviewer gives different answers on different runs. A change that moves the score by one PR may have done nothing.
+- **Overfitting.** Adding a line like "`set_appointment_time` sends an email" fixes pr-01, but it won't help on any other PR. Check Claude's suggestions for this.
+- **Wrong labels.** Sometimes your reviewer is right and the label is wrong. If you think so, you can change it in `data/review-prs/lead-labels.csv`.
+
+The holdout is how you catch overfitting, like a train/test split. If your score is much worse on the holdout than on the dev PRs, your reviewer learned those sixteen PRs rather than the rules. You only run it once, because tuning after you've seen the results would turn it into another dev set.
+
+**Start:** `./lab next`
+
+**Your file:** `my-work/3-reviewer-agent.md`
+
+1. **Get your baseline:** `./lab eval`. It runs your reviewer on the sixteen dev PRs (about a minute) and shows its answers next to the labels, with your score at the end. Run it a second time without changing anything. Any results that differ between the two runs are noise.
+2. **Change one thing.** Ask Claude: `Read my reviewer's errors and suggest one change.` Before you rerun, predict which PRs it will fix. Then run `./lab eval --note "what I changed"`. Repeat while you have time. Your scores are saved in `my-work/notes.md`.
+3. **When you're happy with your reviewer, run it against the holdout:** `./lab holdout`. Check whether it clears your bar, and read any errors.
+
+**Done when** you've run the holdout.
+
+**Short of time?** `./lab catch-up improve` gives you a tuned reviewer. Compare it with yours, then run the holdout.
+
+## Chunk 6: Add a human gate and close the loop (15 min)
+
+The last piece is a gate that decides what happens to each PR after its review. It can go back to Claude to fix, go to a person, or merge. Claude will build it. Your job is to decide which PRs go to a person, and when.
 
 ![What your human gate does](assets/human-gate.svg)
 
-### The lead's preferences
+Anything the gate lets through merges without a person seeing it, but if most PRs end up in the queue you haven't saved anyone time.
 
-The team lead has said which PRs a person should see before they merge, whatever the reviewer says. They're in `docs/human-review.md`, and here in short:
+### What the dev team wants a human to review
 
-| | A person should see |
-|---|---|
-| H1 | Anything that touches customer records or personal data: `service/records.py` and `service/models.py` |
-| H2 | Anything over 50 added lines. Big PRs are where things hide |
-| H3 | Anything whose checks didn't finish: a review that failed, timed out or gave no verdict |
-| H4 | Anything the reviewer wasn't sure about |
-| H5 | A PR whose description, comments or code try to steer whoever reviews it |
-| H6 | Changes to how we retry, queue or send messages, where a mistake reaches customers |
+The full brief is in `docs/human-review.md`. We've decided H1 to H4 for you. For H4, Claude updates your reviewer so it can add an `ask_human` field to its answer when it's unsure. You decide how to handle H5 and H6.
 
-H1 to H3 are already decided: they're about what's in the PR, so the gate's code checks them. H4 to H6 are yours.
+| | A person should see | Spotted by |
+|---|---|---|
+| H1 | Changes to `service/records.py` or `service/models.py`, which hold customer data | code |
+| H2 | Anything over 50 added lines | code |
+| H3 | Anything whose review crashed, timed out or gave no verdict | code |
+| H4 | Anything the reviewer wasn't sure about | reviewer |
+| H5 | A PR whose description, comments or code try to steer its reviewer (prompt injection) | ? |
+| H6 | Changes to how customer messages are sent, queued or retried | ? |
 
-### Your options
+### Your decisions
 
-For each of the lead's preferences, think about how you might identify the PRs it describes and trigger the escalation to a person. Again, we aren't looking for a perfect understanding of the codebase, just your intuition about which of these triggers might work, and how each could fail:
-
-- **Code in the gate.** Simple rules about what's in the PR. For example, changes to certain files always go to a person, or any PR over a certain size does, or any PR whose text contains certain phrases. It's certain and cheap, but it can't tell what a change means.
-- **Your reviewer.** You can tell it to ask for a person, by calling `alert_human`, when it isn't sure or when a finding is serious. It's the only one that knows its own doubts, but it's also the thing being judged, so it can't protect you from its own mistakes, or from a PR that has steered it.
-- **A specialist agent.** A separate agent that checks every PR against criteria you give it. For example, you could ask it whether a change is high risk, because it changes how messages are retried, queued or sent. It can judge what a change does, not just which files it touches, but it costs a model call on every PR, and it can be wrong too.
+- **What spots H5 and H6?** You can use more than one of these for each:
+  - **Code in the gate,** such as a list of files or phrases. It's fast and predictable, but it only matches what you listed.
+  - **Your reviewer,** using the same `ask_human` field.
+  - **A specialist agent** that only decides whether a person should look. It can work out what a change does, but costs another model call per PR.
+- **Claude first, or a person first?** Say a PR changes how messages are sent, and your reviewer has also found a bug in it. Should a person see it now, or after Claude has fixed the bug? What about a PR that tried to steer the reviewer?
+- **When does the loop stop?** If the reviewer keeps rejecting Claude's fixes, how many tries does Claude get before a person steps in?
 
 **Start:** `./lab next`
 
-1. **Make your choices** for H4 to H6. Write them in `my-work/5-human-gate.md`, or tell Claude and have it write them in.
-2. **Build it.** Ask Claude: `Build my human gate.` It builds the gate's rules in `scripts/gate.py`, tells your reviewer when to call `alert_human`, and writes your specialist agent in `my-work/6-gate-agent.md` if you chose one. Then it runs `./lab test-gate`, which tries your gate on tricky situations, such as a reviewer that crashes. Nobody is really alerted.
-3. **Run the whole system:** `./lab pipeline`. It runs your checks, then your reviewer, then your gate, on the sixteen dev PRs, and anything sent to a person lands in `human-review-queue.md`. Does what's there match the lead's preferences? And is the number right?
+**Your file:** `my-work/5-human-gate.md`, which Claude fills in with you
 
-**Done when** `./lab test-gate` passes and you've read the queue.
+1. **Design and build your gate.** In Claude, run `/design-gate`. It asks you these questions, builds `scripts/gate.py` and any specialist you chose, and runs `./lab test-gate`. If your reviewer missed your bar on the holdout, it also asks whether those kinds of PR should go to a person.
+2. **Run the whole system:** `./lab pipeline`. It runs your checks, reviewer and gate on the dev PRs, plus five new ones made to test your gate. It ends with three numbers: problem PRs that merged, PRs the team wanted a human to review that merged without one, and PRs a person had to read. Ideally the first two are zero and the third is small. Open `human-review-queue.md` and check whether each PR in it was worth a person's time.
+3. **Close the loop:** `./lab loop pr-03`. A new Claude session gets your reviewer's findings, fixes the PR and resubmits it, until it merges or goes to a person. Then run `./lab loop pr-09` and read Claude's fix. Would you have approved it?
 
-**Short of time?** `./lab catch-up gate` gives you a gate and a specialist agent that pass. Read them, and argue with one of the choices.
+**Done when** `./lab test-gate` passes and you've run `./lab loop`.
+
+**Short of time?** `./lab catch-up gate` gives you a working gate and specialist. Then run steps 2 and 3.
 
 ## Check you're done
 
@@ -141,19 +152,17 @@ Ask Claude: `Am I done with Part 2?`
 
 **Your file:** `my-work/extension-models.md`
 
-Your reviewer has been running on Haiku. Answer the questions in your file, then ask Claude to help you run and compare the models, with the same agent on the same PRs. Any model runs like this:
+Your reviewer has been running on Haiku. Answer the questions in your file, then try the same reviewer on a stronger model:
 
 ```bash
-LAB_REVIEW_MODEL=sonnet ./lab review dev --out results-sonnet.json
-./lab score --results results-sonnet.json
-LAB_REVIEW_MODEL=opus ./lab review design --out results-design-opus.json
+LAB_REVIEW_MODEL=sonnet ./lab eval --note "sonnet"
 ```
 
-**Things you could look at:**
+Compare misses, false alarms, noise between runs and cost. If your reviewer already scores well on Haiku, add `--agent data/plain-reviewer.md` to see whether a stronger model makes up for weaker instructions.
 
-- What it catches, and its false alarms
-- How much its answers change between runs
-- How it handles R13, on the design PRs
-- Whether you'd want its comments on your own PR
-- What it costs and how long it takes: each review prints a cost estimate
+You can also compare models on R13, the interface design rule. The two `design` PRs add the same feature with different function signatures. They have no labels, so read the comments and decide which model's feedback you'd rather get:
 
+```bash
+./lab review design --out results-design-haiku.json
+LAB_REVIEW_MODEL=opus ./lab review design --out results-design-opus.json
+```

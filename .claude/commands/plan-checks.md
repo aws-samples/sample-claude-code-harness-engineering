@@ -14,6 +14,6 @@ Then:
 - Write my answers into my-work/2-checks-plan.md, in my words, replacing every TODO.
 - Build the checks in scripts/checks.py: `POLICY` with "block" or "warn" for each rule, `SCOPE` as "new" or "all", and `check_source()`. Each finding's message tells whoever hit it how to fix it. Run `./lab test-checks` and make it pass, including the table of check PRs at the end. A rule marked "for your reviewer" there is fine.
 - Add the git pre-commit hook: `.githooks/pre-commit` running `python3 scripts/run_checks.py --staged`, made executable, with `git config core.hooksPath .githooks`.
-- If I chose a guard that can be set up here, such as permission rules, set it up in `.claude/settings.local.json`, which isn't committed. Don't change `.claude/settings.json`.
+- If I chose a guard that can be set up here, such as permission rules, set it up in `.claude/settings.local.json`, which isn't committed. Don't change `.claude/settings.json`. Scope any deny rule to `scripts/checks.py`, `scripts/run_checks.py` and `.githooks/`. Part 2 needs to edit other files in `scripts/`.
 
 Show me what you built in a few lines, and what the PR table says.

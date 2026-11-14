@@ -1,6 +1,6 @@
 # 1. Sort the team's rules
 
-Replace each `TODO` with your answer. A few words is fine. R5 and R7 are already filled in, as examples.
+Replace each `TODO` with a few words. R5 and R7 are filled in as examples.
 
 **Category** is one of:
 
@@ -24,6 +24,6 @@ Replace each `TODO` with your answer. A few words is fine. R5 and R7 are already
 | R12 No abstraction before the third use | TODO | TODO |
 | R13 Interfaces are easy to use correctly | TODO | TODO |
 
-## The rule I argued about most, and what settled it
+## Which rule was hardest to categorize, and why?
 
 TODO

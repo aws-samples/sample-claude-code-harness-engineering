@@ -1,19 +1,19 @@
-# 4. How would you know the reviewer is any good?
+# 4. Build a scorer
 
-Replace each `TODO` with your answer. A few words is fine. `./lab` shows how many are left.
+Run `/design-eval` in Claude and it will fill this in with you.
 
-## 1. What are the properties of a good review from this agent? Name three to five.
-
-TODO
-
-## 2. How will you use the labels? The verdict, the rule, the quality of the reasoning? What counts as right on one PR?
+## 1. What counts as caught?
 
 TODO
 
-## 3. What could make your score lie?
+## 2. What do you measure?
 
 TODO
 
-## 4. How good must it be for each job: leaving a comment, blocking a merge, approving alone? A miss and a false alarm cost this team different things.
+## 3. Your bar for merging without a person: how many misses, and how many false alarms?
+
+TODO
+
+## 4. What did the third fake reviewer show you?
 
 TODO

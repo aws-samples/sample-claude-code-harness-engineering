@@ -7,6 +7,22 @@
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "global.anthropic.claude-haiku-5-5"
   },
   "model": "opus",
+  "permissions": {
+    "allow": [
+      "Bash(./lab *)",
+      "Bash(cat .claude/lab-stage)",
+      "Edit(my-work/**)",
+      "Edit(scripts/checks.py)",
+      "Edit(scripts/score.py)",
+      "Edit(scripts/gate.py)"
+    ],
+    "ask": [
+      "Bash(./lab holdout*)",
+      "Bash(./lab next*)",
+      "Bash(./lab goto *)",
+      "Bash(./lab catch-up *)"
+    ]
+  },
   "enabledPlugins": {
     "aws-core@claude-plugins-official": true
   }
