@@ -1,0 +1,18 @@
+PR #403: List the branches
+Description: The front desk wants a branch picker.
+
+diff --git a/appointment_reminders/app/api/branches.py b/appointment_reminders/app/api/branches.py
+new file mode 100644
+index 0000000..69d096a
+--- /dev/null
++++ b/appointment_reminders/app/api/branches.py
+@@ -0,0 +1,9 @@
++from __future__ import annotations
++
++from appointment_reminders.app.api.web import app
++from appointment_reminders.app.state import BRANCHES
++
++
++@app.route("/api/branches")
++def list_branches(request) -> dict:
++    return {"branches": BRANCHES}

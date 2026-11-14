@@ -1,0 +1,63 @@
+PR #308: Add a shared batching helper
+Description: Pull the batching loop out so the archive job stops copying it.
+
+diff --git a/appointment_reminders/tools/archive.py b/appointment_reminders/tools/archive.py
+index 75b3105..2db7ee3 100644
+--- a/appointment_reminders/tools/archive.py
++++ b/appointment_reminders/tools/archive.py
+@@ -1,6 +1,8 @@
+ """Archive old appointments."""
+ from __future__ import annotations
+ 
++from appointment_reminders.tools.batching import batches
++
+ 
+ def archive_all(items: list, store) -> None:
+     """Move items to the archive store.
+@@ -8,5 +10,5 @@ def archive_all(items: list, store) -> None:
+     Failure modes:
+         Whatever store.put raises. Earlier items stay archived.
+     """
+-    for start in range(0, len(items), 50):
+-        store.put(items[start:start + 50])
++    for batch in batches(items):
++        store.put(batch)
+diff --git a/appointment_reminders/tools/batching.py b/appointment_reminders/tools/batching.py
+index 4f5e581..9606b84 100644
+--- a/appointment_reminders/tools/batching.py
++++ b/appointment_reminders/tools/batching.py
+@@ -2,14 +2,24 @@
+ from __future__ import annotations
+ 
+ 
++def batches(items: list, size: int = 50):
++    """Yield items in slices of size.
++
++    Failure modes:
++        Raises ValueError if size is 0.
++    """
++    for start in range(0, len(items), size):
++        yield items[start:start + size]
++
++
+ def send_in_batches(items: list, send, size: int = 50) -> None:
+     """Send items in batches.
+ 
+     Failure modes:
+         Whatever send raises. Earlier batches have already gone.
+     """
+-    for start in range(0, len(items), size):
+-        send(items[start:start + size])
++    for batch in batches(items, size):
++        send(batch)
+ 
+ 
+ def export_in_batches(items: list, write, size: int = 50) -> None:
+@@ -18,5 +28,5 @@ def export_in_batches(items: list, write, size: int = 50) -> None:
+     Failure modes:
+         Whatever write raises. Earlier batches have already been written.
+     """
+-    for start in range(0, len(items), size):
+-        write(items[start:start + size])
++    for batch in batches(items, size):
++        write(batch)

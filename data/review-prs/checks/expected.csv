@@ -1,0 +1,10 @@
+pr,needs_changes,rules,reason
+chk-1,yes,R2,Destructive SQL outside migrations/
+chk-2,yes,R4,"httpx imported in service/, not tools/"
+chk-3,yes,R7,A route with no @rate_limit
+chk-4,yes,R10,A token written into a test
+chk-5,yes,R11,A public function in tools/ with no Failure modes: section
+chk-6,yes,R3,A test skipped to get it green
+chk-7,yes,R6,Logs the customer's email
+chk-8,no,,Near miss: destructive SQL inside migrations/ is allowed
+chk-9,no,,"Near miss: the key comes from the environment, and the function documents how it fails"

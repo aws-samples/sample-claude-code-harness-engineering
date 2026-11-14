@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+results*.json
+human-review-queue.md
+.claude/lab-stage
+.claude/lab-log
+uv.lock
+*.orig*
+.claude/frozen-agent.md
+.claude/settings.local.json
+.claude/last-eval.json

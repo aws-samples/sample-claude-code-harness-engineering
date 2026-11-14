@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 410" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">Code review today, and with your loop</title>
+  <desc id="desc">Today every PR Claude writes waits for a person, who reviews all of it, so PRs pile up. With your loop, checks run on every commit and a reviewer agent reads every PR, sending problems back to Claude. A gate sends only some PRs to a person.</desc>
+  <style>
+    .h{font-size:16px;font-weight:650;fill:#241a35} .hs{font-size:14px;fill:#6c6480}
+    .t{font-size:14.5px;font-weight:600;fill:#241a35;text-anchor:middle} .s{font-size:12.5px;fill:#6c6480;text-anchor:middle}
+    .track{stroke:#ddd6ea;stroke-width:4;stroke-linecap:round;fill:none}
+    .back{stroke:#e9b3aa;stroke-width:2.5;fill:none;stroke-dasharray:2 7;stroke-linecap:round}
+    .stop{fill:#fff;stroke:#241a35;stroke-width:2.5}
+    .b{font-size:12.5px;fill:#b0473a;text-anchor:middle}
+  </style>
+  <rect width="960" height="410" rx="16" fill="#faf9fc"/>
+
+  <text x="40" y="38" class="h">Today</text><text x="100" y="38" class="hs">every PR waits for a person, who reviews all of it</text>
+  <path d="M80 120H880" class="track"/>
+  <g fill="#5a3e9b"><circle cx="490" cy="120" r="6" opacity=".9"/><circle cx="472" cy="120" r="6" opacity=".7"/><circle cx="454" cy="120" r="6" opacity=".5"/><circle cx="436" cy="120" r="6" opacity=".3"/></g>
+  <text x="463" y="148" class="s">PRs waiting</text>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="10s" repeatCount="indefinite" path="M80 120H880" keyPoints="0;0.42;0.42;0.55;0.55;1;1" keyTimes="0;0.2;0.65;0.7;0.88;0.97;1" calcMode="linear"/></circle>
+  <circle cx="80" cy="120" r="10" class="stop"/><text x="80" y="82" class="t">Claude</text><text x="80" y="99" class="s">writes a change</text>
+  <circle cx="520" cy="120" r="10" class="stop" fill="#fdf2df" style="fill:#fdf2df;stroke:#d98e1f"/><text x="520" y="82" class="t">A person reviews it</text><text x="520" y="99" class="s">every PR, every rule</text>
+  <circle cx="880" cy="120" r="10" style="fill:#2f7d5b;stroke:#2f7d5b;stroke-width:2.5"/><text x="880" y="82" class="t">Merged</text>
+
+  <text x="40" y="198" class="h">With your loop</text><text x="174" y="198" class="hs">problems go back to Claude, and people see only what needs them</text>
+  <path d="M80 280H880M680 280V344" class="track"/>
+  <path d="M280 292C280 330 80 330 80 292" class="back"/>
+  <path d="M480 292C480 392 80 392 80 292" class="back"/>
+  <text x="180" y="337" class="b">fails a check</text>
+  <text x="280" y="396" class="b">reviewer asks for changes</text>
+
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="8s" repeatCount="indefinite" path="M80 280H280C280 330 80 330 80 280" keyPoints="0;0.41;0.41;1;1" keyTimes="0;0.25;0.33;0.75;1" calcMode="linear"/><animate attributeName="fill" dur="8s" repeatCount="indefinite" values="#5a3e9b;#5a3e9b;#c0503f;#c0503f;#5a3e9b" keyTimes="0;0.3;0.34;0.8;1"/></circle>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="8s" begin="-6s" repeatCount="indefinite" path="M80 280H880" keyPoints="0;0.25;0.25;0.5;0.5;0.75;0.75;1;1" keyTimes="0;0.12;0.18;0.3;0.36;0.48;0.54;0.7;1" calcMode="linear"/></circle>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="8s" begin="-4s" repeatCount="indefinite" path="M80 280H680V344" keyPoints="0;0.301;0.301;0.602;0.602;0.904;0.904;1;1" keyTimes="0;0.12;0.18;0.3;0.36;0.48;0.54;0.62;1" calcMode="linear"/></circle>
+  <circle r="6" fill="#5a3e9b"><animateMotion dur="8s" begin="-2s" repeatCount="indefinite" path="M80 280H480C480 392 80 392 80 280" keyPoints="0;0.202;0.202;0.404;0.404;1;1" keyTimes="0;0.1;0.16;0.28;0.36;0.85;1" calcMode="linear"/><animate attributeName="fill" begin="-2s" dur="8s" repeatCount="indefinite" values="#5a3e9b;#5a3e9b;#c0503f;#c0503f;#5a3e9b" keyTimes="0;0.33;0.37;0.88;1"/></circle>
+
+  <circle cx="80" cy="280" r="10" class="stop"/><text x="80" y="242" class="t">Claude</text><text x="80" y="259" class="s">writes a change</text>
+  <circle cx="280" cy="280" r="10" class="stop"/><text x="280" y="242" class="t">Checks</text><text x="280" y="259" class="s">code, on every commit</text>
+  <circle cx="480" cy="280" r="10" class="stop"/><text x="480" y="242" class="t">Reviewer agent</text><text x="480" y="259" class="s">judgment, on every PR</text>
+  <circle cx="680" cy="280" r="10" class="stop"/><text x="680" y="242" class="t">Human gate</text><text x="680" y="259" class="s">does a person need to look?</text>
+  <circle cx="880" cy="280" r="10" style="fill:#2f7d5b;stroke:#2f7d5b;stroke-width:2.5"/><text x="880" y="242" class="t">Merged</text>
+  <circle cx="680" cy="352" r="10" style="fill:#fdf2df;stroke:#d98e1f;stroke-width:2.5"/><text x="700" y="357" font-size="14.5" font-weight="600" fill="#241a35">A person looks</text>
+</svg>

@@ -1,0 +1,31 @@
+PR #407: Log each reminder we send
+Description: Support keep asking whether a reminder went out.
+
+diff --git a/appointment_reminders/service/scheduler.py b/appointment_reminders/service/scheduler.py
+index 8acff8c..149d9c9 100644
+--- a/appointment_reminders/service/scheduler.py
++++ b/appointment_reminders/service/scheduler.py
+@@ -1,12 +1,15 @@
+ """Pick the reminders that are due, and send them."""
+ from __future__ import annotations
+ 
++import logging
+ from datetime import datetime, timedelta
+ 
+ from appointment_reminders.service.models import Appointment, Reminder, SendResult
+ from appointment_reminders.service.risk import reminder_text
+ from appointment_reminders.service.settings import REMINDER_WINDOW_SECONDS, SWEEP_LIMIT
+ 
++logger = logging.getLogger(__name__)
++
+ 
+ def due_appointments(appointments: list[Appointment], now: datetime) -> list[Appointment]:
+     """Appointments starting within the reminder window, soonest first."""
+@@ -26,6 +29,7 @@ def send_all(reminders: list[Reminder], gateway) -> list[SendResult]:
+     for reminder in reminders:
+         try:
+             gateway.send(reminder)
++            logger.info("sent reminder %s to %s", reminder.id, reminder.customer_email)
+             results.append(SendResult(delivered=True))
+         except ConnectionError:
+             results.append(SendResult(delivered=False, code="GATEWAY_DOWN"))

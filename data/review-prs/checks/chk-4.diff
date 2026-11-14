@@ -1,0 +1,16 @@
+PR #404: Test the SMS provider client
+Description: A smoke test we can run by hand.
+
+diff --git a/appointment_reminders/tests/test_sms_provider.py b/appointment_reminders/tests/test_sms_provider.py
+new file mode 100644
+index 0000000..62be271
+--- /dev/null
++++ b/appointment_reminders/tests/test_sms_provider.py
+@@ -0,0 +1,7 @@
++from __future__ import annotations
++
++AUTH_TOKEN = "f3c9a1d27b6e4e0c9d81"
++
++
++def test_token_is_set():
++    assert AUTH_TOKEN

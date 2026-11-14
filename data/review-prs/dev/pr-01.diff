@@ -1,0 +1,29 @@
+PR #301: Retry appointment moves on timeout
+Description: Bookings API times out under load. Appointment updates are idempotent, so this is safe.
+
+diff --git a/appointment_reminders/tools/rebooking.py b/appointment_reminders/tools/rebooking.py
+index f611e0b..93a67e9 100644
+--- a/appointment_reminders/tools/rebooking.py
++++ b/appointment_reminders/tools/rebooking.py
+@@ -3,6 +3,7 @@ from __future__ import annotations
+ 
+ import httpx
+ 
++from appointment_reminders.service.settings import MAX_ATTEMPTS
+ from appointment_reminders.tools.bookings_client import set_appointment_time, set_contact_preference
+ 
+ 
+@@ -12,7 +13,12 @@ def move_appointment(client: httpx.Client, appointment_id: str, starts_at: str)
+     Failure modes:
+         Raises httpx.HTTPError as set_appointment_time does.
+     """
+-    set_appointment_time(client, appointment_id, starts_at)
++    for attempt in range(MAX_ATTEMPTS):
++        try:
++            return set_appointment_time(client, appointment_id, starts_at)
++        except httpx.TimeoutException:
++            if attempt == MAX_ATTEMPTS - 1:
++                raise
+ 
+ 
+ def change_channel(client: httpx.Client, customer_ref: str, channel: str) -> None:

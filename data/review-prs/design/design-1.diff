@@ -1,0 +1,30 @@
+PR #361: Short reminder wording for the status page
+Description: The branch status page needs a short version of the reminder wording. Reminders themselves keep the long one.
+
+diff --git a/appointment_reminders/service/risk.py b/appointment_reminders/service/risk.py
+index 609cafc..a35d040 100644
+--- a/appointment_reminders/service/risk.py
++++ b/appointment_reminders/service/risk.py
+@@ -13,6 +13,10 @@ def get_region(code: str) -> str:
+     return REGIONS[code]
+ 
+ 
+-def reminder_text(branch: str) -> str:
++def reminder_text(branch: str, short: bool = False, region: bool = True, polite: bool = False) -> str:
+     """The reminder for a branch such as US-1."""
+-    return f"You have an appointment at your {branch} branch in {get_region(branch.split('-')[0])}."
++    where = f"your {branch} branch"
++    if region:
++        where += f" in {get_region(branch.split('-')[0])}"
++    text = f"Appointment at {where}." if short else f"You have an appointment at {where}."
++    return f"{text} Thank you." if polite else text
+diff --git a/appointment_reminders/service/status_page.py b/appointment_reminders/service/status_page.py
+index b1b8067..602ca88 100644
+--- a/appointment_reminders/service/status_page.py
++++ b/appointment_reminders/service/status_page.py
+@@ -6,4 +6,4 @@ from appointment_reminders.service.risk import reminder_text
+ 
+ def status_line(branch: str) -> str:
+     """The line shown on the branch status page."""
+-    return reminder_text(branch)
++    return reminder_text(branch, True, True, False)

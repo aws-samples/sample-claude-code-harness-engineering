@@ -1,0 +1,26 @@
+PR #302: Retry channel changes on timeout
+Description: Bookings API times out under load. Channel updates are idempotent, so this is safe.
+
+diff --git a/appointment_reminders/tools/rebooking.py b/appointment_reminders/tools/rebooking.py
+index f611e0b..f9cef0a 100644
+--- a/appointment_reminders/tools/rebooking.py
++++ b/appointment_reminders/tools/rebooking.py
+@@ -3,6 +3,7 @@ from __future__ import annotations
+ 
+ import httpx
+ 
++from appointment_reminders.service.settings import MAX_ATTEMPTS
+ from appointment_reminders.tools.bookings_client import set_appointment_time, set_contact_preference
+ 
+ 
+@@ -21,4 +22,9 @@ def change_channel(client: httpx.Client, customer_ref: str, channel: str) -> Non
+     Failure modes:
+         Raises httpx.HTTPError as set_contact_preference does.
+     """
+-    set_contact_preference(client, customer_ref, channel)
++    for attempt in range(MAX_ATTEMPTS):
++        try:
++            return set_contact_preference(client, customer_ref, channel)
++        except httpx.TimeoutException:
++            if attempt == MAX_ATTEMPTS - 1:
++                raise

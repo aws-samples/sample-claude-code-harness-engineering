@@ -1,0 +1,13 @@
+PR #314: Log batches as they're queued
+Description: We can't tell what went into the queue when something goes wrong.
+
+diff --git a/appointment_reminders/service/queueing.py b/appointment_reminders/service/queueing.py
+index 882f40e..d762e42 100644
+--- a/appointment_reminders/service/queueing.py
++++ b/appointment_reminders/service/queueing.py
+@@ -13,4 +13,5 @@ async def queue_reminder(queue, reminder: Reminder) -> None:
+ 
+ 
+ async def queue_batch(queue, batch: ReminderBatch) -> None:
++    logger.info("queued %s", batch)
+     await queue.put(batch)

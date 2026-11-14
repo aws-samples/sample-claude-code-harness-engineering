@@ -1,0 +1,890 @@
+{
+ "pr-01": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-02": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-03": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-04": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-05": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-06": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-07": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-08": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-09": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-10": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-11": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-12": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-13": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-14": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-15": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-16": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-41": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-42": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-43": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-44": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-45": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-46": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-47": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ },
+ "pr-48": {
+  "verdict": "request_changes",
+  "findings": [
+   {
+    "rule": "R1",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R3",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R5",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R6",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R8",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R9",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R11",
+    "why": "Looks risky."
+   },
+   {
+    "rule": "R12",
+    "why": "Looks risky."
+   }
+  ]
+ }
+}

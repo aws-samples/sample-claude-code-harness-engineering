@@ -1,0 +1,40 @@
+{
+  "chunks": {
+    "sort": {
+      "label": "Chunk 1 of 6: Sort the rules",
+      "file": "my-work/1-rule-sort.md",
+      "todo": "Categorize each rule in my-work/1-rule-sort.md as check, reviewer or both. R5 and R7 are done for you.",
+      "done": "No TODOs left. Then: ./lab next"
+    },
+    "checks": {
+      "label": "Chunk 2 of 6: Build the checks",
+      "file": "my-work/2-checks-plan.md",
+      "todo": "Run /plan-checks in Claude. It asks you three questions, then builds your checks in scripts/checks.py and the pre-commit hook.",
+      "done": "./lab test-checks passes. Then: ./lab next"
+    },
+    "reviewer": {
+      "label": "Chunk 3 of 6: Build the reviewer agent",
+      "file": "my-work/3-reviewer-agent.md",
+      "todo": "Run /interview-reviewer in Claude. Then ./lab review try.",
+      "done": "It gives a verdict on every practice PR. Then: ./lab next"
+    },
+    "scorer": {
+      "label": "Chunk 4 of 6: Build a scorer",
+      "file": "my-work/4-eval-design.md",
+      "todo": "Run /design-eval in Claude. It interviews you and builds your scorer.",
+      "done": "./lab test-scorer passes. Then: ./lab next"
+    },
+    "improve": {
+      "label": "Chunk 5 of 6: Improve your reviewer",
+      "file": "my-work/3-reviewer-agent.md",
+      "todo": "Run ./lab eval twice for a baseline. Change one thing, then ./lab eval --note \"what I changed\". When you're happy with your reviewer: ./lab holdout.",
+      "done": "You've run ./lab holdout. Then: ./lab next"
+    },
+    "gate": {
+      "label": "Chunk 6 of 6: Add a human gate and close the loop",
+      "file": "my-work/5-human-gate.md",
+      "todo": "Run /design-gate in Claude. Then ./lab pipeline, and ./lab loop pr-03.",
+      "done": "./lab test-gate passes and you've run ./lab loop."
+    }
+  }
+}
