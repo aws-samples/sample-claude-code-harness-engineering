@@ -1,0 +1,15 @@
+PR #348: Log profile updates
+Description: Support needs to see which profiles arrived.
+
+diff --git a/appointment_reminders/service/records.py b/appointment_reminders/service/records.py
+index bc3b1c1..256bc75 100644
+--- a/appointment_reminders/service/records.py
++++ b/appointment_reminders/service/records.py
+@@ -17,6 +17,7 @@ def find_profile(record: CustomerProfile, candidates: list[CustomerProfile]) ->
+ 
+ 
+ def save_profile(record: CustomerProfile, store) -> None:
++    logger.info("profile received: %s", record)
+     store.save(record)
+ 
+ 

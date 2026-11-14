@@ -1,0 +1,20 @@
+PR #356: Add an export key
+Description: The export job needs somewhere to record its progress.
+
+diff --git a/appointment_reminders/tools/exports.py b/appointment_reminders/tools/exports.py
+new file mode 100644
+index 0000000..4940072
+--- /dev/null
++++ b/appointment_reminders/tools/exports.py
+@@ -0,0 +1,11 @@
++"""Export progress."""
++from __future__ import annotations
++
++
++def export_key(branch: str, day: str) -> str:
++    """The store key for one branch's export on one day.
++
++    Failure modes:
++        None.
++    """
++    return f"export:{day}:{branch}"

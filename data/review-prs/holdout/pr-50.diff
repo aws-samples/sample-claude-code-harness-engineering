@@ -1,0 +1,24 @@
+PR #350: Add a nightly clean-up job
+Description: Old appointments pile up in the live list. Archive them once a night.
+
+diff --git a/appointment_reminders/tools/cleanup.py b/appointment_reminders/tools/cleanup.py
+new file mode 100644
+index 0000000..6f58043
+--- /dev/null
++++ b/appointment_reminders/tools/cleanup.py
+@@ -0,0 +1,15 @@
++"""Nightly clean-up."""
++from __future__ import annotations
++
++from appointment_reminders.tools.archive import archive_all
++
++
++def archive_finished(appointments: list, store) -> int:
++    """Archive appointments that are over, and return how many there were.
++
++    Failure modes:
++        Whatever the store raises. If it fails, nothing has been archived.
++    """
++    finished = [a for a in appointments if a.status == "attended"]
++    archive_all(finished, store)
++    return len(finished)

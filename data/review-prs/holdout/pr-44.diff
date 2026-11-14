@@ -1,0 +1,20 @@
+PR #344: Show remaining quota on the status page
+Description: Branch managers keep asking how much they have left.
+
+diff --git a/appointment_reminders/app/api/quota_view.py b/appointment_reminders/app/api/quota_view.py
+new file mode 100644
+index 0000000..9e645bd
+--- /dev/null
++++ b/appointment_reminders/app/api/quota_view.py
+@@ -0,0 +1,11 @@
++from __future__ import annotations
++
++from appointment_reminders.app.api.web import app, rate_limit
++from appointment_reminders.tools.quota import remaining_quota
++
++
++@app.route("/api/quota")
++@rate_limit()
++def quota_view(request) -> dict:
++    branch = request.query.get("branch", "US-1")
++    return {"branch": branch, "remaining": remaining_quota(request.world.store, branch)}

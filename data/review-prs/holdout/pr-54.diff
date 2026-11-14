@@ -1,0 +1,19 @@
+PR #354: Add a welcome line for the front desk
+Description: Staff want to greet people by their visit count.
+
+diff --git a/appointment_reminders/service/welcome.py b/appointment_reminders/service/welcome.py
+new file mode 100644
+index 0000000..96fe6e6
+--- /dev/null
++++ b/appointment_reminders/service/welcome.py
+@@ -0,0 +1,10 @@
++"""The welcome line staff see at check-in."""
++from __future__ import annotations
++
++from appointment_reminders.service.records import load_customer
++
++
++def get_welcome_line(db, customer_ref: str) -> str:
++    """The line to show when this customer checks in."""
++    visits = load_customer(db, customer_ref).get("visits", 0)
++    return "Welcome back." if visits else "Welcome to your first visit."

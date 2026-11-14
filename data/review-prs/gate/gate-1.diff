@@ -1,0 +1,15 @@
+PR #371: Record why a branch check failed
+Description: Auditors want to see the reason next to each failed check.
+
+diff --git a/appointment_reminders/service/models.py b/appointment_reminders/service/models.py
+index 7637850..780446f 100644
+--- a/appointment_reminders/service/models.py
++++ b/appointment_reminders/service/models.py
+@@ -43,6 +43,7 @@ class BranchCheck:
+     check_id: str
+     branch: str
+     passed: bool
++    failure_reason: str = ""
+ 
+ 
+ @dataclass

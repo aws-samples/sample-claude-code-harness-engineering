@@ -1,0 +1,24 @@
+PR #352: Tag order no longer counts as a change
+Description: Staff reorder tags by accident, and each reorder was saved as an update.
+
+diff --git a/appointment_reminders/service/scheduler.py b/appointment_reminders/service/scheduler.py
+index 8acff8c..8e02179 100644
+--- a/appointment_reminders/service/scheduler.py
++++ b/appointment_reminders/service/scheduler.py
+@@ -33,5 +33,5 @@ def send_all(reminders: list[Reminder], gateway) -> list[SendResult]:
+ 
+ 
+ def tags_changed(old: list[str], new: list[str]) -> bool:
+-    """Whether an appointment's tags differ."""
+-    return old != new
++    """Whether an appointment's tags differ, ignoring order."""
++    return sorted(old) != sorted(new)
+diff --git a/appointment_reminders/tests/test_scheduler.py b/appointment_reminders/tests/test_scheduler.py
+index 5903f86..b139df9 100644
+--- a/appointment_reminders/tests/test_scheduler.py
++++ b/appointment_reminders/tests/test_scheduler.py
+@@ -20,3 +20,4 @@ def test_only_appointments_in_the_window_are_due():
+ def test_tags_changed():
+     assert tags_changed(["a"], ["b"])
+     assert not tags_changed(["a"], ["a"])
++    assert not tags_changed(["a", "b"], ["b", "a"])

@@ -1,0 +1,17 @@
+PR #375: Send reminders a little earlier
+Description: Customers at the rural branches say an hour isn't enough notice.
+
+diff --git a/appointment_reminders/service/settings.py b/appointment_reminders/service/settings.py
+index 7215ea4..38d3ee6 100644
+--- a/appointment_reminders/service/settings.py
++++ b/appointment_reminders/service/settings.py
+@@ -6,7 +6,8 @@ MAX_ATTEMPTS = 3
+ RETRY_BACKOFF_SECONDS = 2
+ # Messaging contract: 150 sends a minute. 120 leaves room for one-off messages.
+ MAX_SENDS_PER_MINUTE = 120
+-REMINDER_WINDOW_SECONDS = 3600
++# 75 minutes: the longest typical drive to a branch is an hour, plus time to get ready.
++REMINDER_WINDOW_SECONDS = 4500
+ SWEEP_LIMIT = 200
+ BATCH_SIZE = 25
+ JITTER = 0.62

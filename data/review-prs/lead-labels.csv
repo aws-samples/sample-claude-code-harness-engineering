@@ -1,0 +1,17 @@
+pr,needs_changes,rules,reason
+pr-01,yes,R5,"set_appointment_time also emails the customer, so a retry can email twice. The PR says it's idempotent"
+pr-02,no,,"Twin of pr-01, same wording: set_contact_preference is a plain PUT"
+pr-03,yes,R1,'bad configuration' gives on-call no next step
+pr-04,no,,"EndOfPages is caught in all_items: handled in code, so R1 exempts it"
+pr-05,yes,R9,canonical_tags sounds pure but sorts the caller's list in place
+pr-06,no,,Cached getter over a static table. The name stays true
+pr-07,yes,R12,"Only one other copy exists (quota_key), so this is the second use"
+pr-08,no,,"Three copies of the loop exist, so this is the third use, which R12 allows"
+pr-09,yes,R8,'# sweep limit' and '# tuned' say nothing about why 437 and 1.7
+pr-10,no,,The comment explains 80
+pr-11,yes,R3,"The fake stops failing, so the test no longer tests failure. The only reason given is unblocking CI"
+pr-12,no,,"pytest.approx is the right way to compare floats, the reason is stated, and a new assert covers what rounding hid"
+pr-13,yes,R6,"Reminder is a dataclass, so %s prints customer_email"
+pr-14,no,,ReminderBatch.__str__ prints the id and size only
+pr-15,yes,R11,Only timeouts return None. Connection and HTTP errors raise
+pr-16,no,,PUT replaces the list and the PR says why that's safe. Arguable if the API has side effects

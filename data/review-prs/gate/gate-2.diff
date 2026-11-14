@@ -1,0 +1,91 @@
+PR #372: Show opening hours on the status page
+Description: Branch managers asked for today's hours under the reminder wording.
+
+diff --git a/appointment_reminders/service/opening_hours.py b/appointment_reminders/service/opening_hours.py
+new file mode 100644
+index 0000000..2619855
+--- /dev/null
++++ b/appointment_reminders/service/opening_hours.py
+@@ -0,0 +1,38 @@
++"""Branch opening hours, for the status page."""
++from __future__ import annotations
++
++from dataclasses import dataclass
++from datetime import datetime, time
++
++DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
++
++
++@dataclass(frozen=True)
++class Hours:
++    opens: time
++    closes: time
++
++
++WEEKDAY = Hours(time(8, 30), time(18, 0))
++SATURDAY = Hours(time(9, 0), time(13, 0))
++
++# One entry per day, Monday first. None means closed.
++OPENING_HOURS: dict[str, tuple[Hours | None, ...]] = {
++    "US-1": (WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, SATURDAY, None),
++    "US-2": (WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, None, None),
++    "CA-1": (WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, WEEKDAY, SATURDAY, None),
++}
++
++
++def hours_on(branch: str, moment: datetime) -> Hours | None:
++    """The branch's hours on the day of moment, or None if it's closed that day. moment is in the branch's local time."""
++    return OPENING_HOURS[branch][moment.weekday()]
++
++
++def hours_line(branch: str, moment: datetime) -> str:
++    """One line for the status page, such as "Monday: 08:30 to 18:00"."""
++    day = DAYS[moment.weekday()]
++    hours = hours_on(branch, moment)
++    if hours is None:
++        return f"{day}: closed"
++    return f"{day}: {hours.opens:%H:%M} to {hours.closes:%H:%M}"
+diff --git a/appointment_reminders/service/status_page.py b/appointment_reminders/service/status_page.py
+index b1b8067..2173667 100644
+--- a/appointment_reminders/service/status_page.py
++++ b/appointment_reminders/service/status_page.py
+@@ -1,9 +1,12 @@
+ """Text for the branch status page."""
+ from __future__ import annotations
+ 
++from datetime import datetime
++
++from appointment_reminders.service.opening_hours import hours_line
+ from appointment_reminders.service.risk import reminder_text
+ 
+ 
+-def status_line(branch: str) -> str:
+-    """The line shown on the branch status page."""
+-    return reminder_text(branch)
++def status_line(branch: str, now: datetime) -> str:
++    """The lines shown on the branch status page. now is in the branch's local time."""
++    return f"{reminder_text(branch)}\n{hours_line(branch, now)}"
+diff --git a/appointment_reminders/tests/test_opening_hours.py b/appointment_reminders/tests/test_opening_hours.py
+new file mode 100644
+index 0000000..e9a3f14
+--- /dev/null
++++ b/appointment_reminders/tests/test_opening_hours.py
+@@ -0,0 +1,18 @@
++from __future__ import annotations
++
++from datetime import datetime
++
++from appointment_reminders.service.opening_hours import hours_line, hours_on
++
++MONDAY = datetime(2030, 3, 4, 9)
++SATURDAY = datetime(2030, 3, 9, 9)
++
++
++def test_weekday_hours():
++    assert hours_line("US-1", MONDAY) == "Monday: 08:30 to 18:00"
++
++
++def test_some_branches_close_on_saturday():
++    assert hours_on("US-2", SATURDAY) is None
++    assert hours_line("US-2", SATURDAY) == "Saturday: closed"
++    assert hours_line("US-1", SATURDAY) == "Saturday: 09:00 to 13:00"

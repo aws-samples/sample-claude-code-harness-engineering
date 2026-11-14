@@ -1,0 +1,38 @@
+PR #353: Retry page fetches on timeout
+Description: The appointment list fails under load.
+
+diff --git a/appointment_reminders/tools/bookings_client.py b/appointment_reminders/tools/bookings_client.py
+index ffbf3e8..c566d7a 100644
+--- a/appointment_reminders/tools/bookings_client.py
++++ b/appointment_reminders/tools/bookings_client.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ 
+ import httpx
+ 
+-from appointment_reminders.service.settings import REQUEST_TIMEOUT_SECONDS
++from appointment_reminders.service.settings import MAX_ATTEMPTS, REQUEST_TIMEOUT_SECONDS
+ 
+ 
+ def set_contact_preference(client: httpx.Client, customer_ref: str, channel: str) -> None:
+@@ -45,12 +45,18 @@ def fetch_status(client: httpx.Client, appointment_id: str) -> str | None:
+ 
+ 
+ def next_page(client: httpx.Client, cursor: str | None) -> dict:
+-    """Fetch one page of appointments.
++    """Fetch one page of appointments, trying again on a timeout.
+ 
+     Failure modes:
+-        Raises httpx.HTTPError if the bookings API rejects the call or can't be reached.
++        Raises httpx.HTTPError if the bookings API rejects the call, can't be reached, or times out MAX_ATTEMPTS times.
+     """
+-    response = client.get("/appointments", params={"cursor": cursor}, timeout=REQUEST_TIMEOUT_SECONDS)
++    for attempt in range(1, MAX_ATTEMPTS + 1):
++        try:
++            response = client.get("/appointments", params={"cursor": cursor}, timeout=REQUEST_TIMEOUT_SECONDS)
++            break
++        except httpx.TimeoutException:
++            if attempt == MAX_ATTEMPTS:
++                raise
+     response.raise_for_status()
+     return response.json()
+ 

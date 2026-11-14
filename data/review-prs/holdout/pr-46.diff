@@ -1,0 +1,69 @@
+PR #346: Retry direct sends when the provider blips
+Description: Sends fail for good when the provider drops a connection for a second. Try again, and log each retry so we can see how often it happens.
+
+diff --git a/appointment_reminders/service/scheduler.py b/appointment_reminders/service/scheduler.py
+index 8acff8c..997de74 100644
+--- a/appointment_reminders/service/scheduler.py
++++ b/appointment_reminders/service/scheduler.py
+@@ -21,7 +21,7 @@ def reminder_for(appointment: Appointment, customer_email: str) -> Reminder:
+ 
+ 
+ def send_all(reminders: list[Reminder], gateway) -> list[SendResult]:
+-    """Send each reminder once and report what happened to it."""
++    """Send each reminder and report what happened to it. The gateway tries again if the provider blips."""
+     results = []
+     for reminder in reminders:
+         try:
+diff --git a/appointment_reminders/service/settings.py b/appointment_reminders/service/settings.py
+index 7215ea4..55d2a0f 100644
+--- a/appointment_reminders/service/settings.py
++++ b/appointment_reminders/service/settings.py
+@@ -3,6 +3,7 @@ from __future__ import annotations
+ 
+ REQUEST_TIMEOUT_SECONDS = 10
+ MAX_ATTEMPTS = 3
++SEND_RETRY_ATTEMPTS = 3  # tries before a direct send gives up
+ RETRY_BACKOFF_SECONDS = 2
+ # Messaging contract: 150 sends a minute. 120 leaves room for one-off messages.
+ MAX_SENDS_PER_MINUTE = 120
+diff --git a/appointment_reminders/tools/messaging.py b/appointment_reminders/tools/messaging.py
+index e746cc1..8dfeaa7 100644
+--- a/appointment_reminders/tools/messaging.py
++++ b/appointment_reminders/tools/messaging.py
+@@ -1,6 +1,12 @@
+ """The messaging provider."""
+ from __future__ import annotations
+ 
++import logging
++
++from appointment_reminders.service.settings import SEND_RETRY_ATTEMPTS
++
++logger = logging.getLogger(__name__)
++
+ 
+ class DirectGateway:
+     """Sends straight away, for the scheduler."""
+@@ -9,12 +15,20 @@ class DirectGateway:
+         self.client = client
+ 
+     def send(self, reminder) -> None:
+-        """Send one reminder.
++        """Send one reminder, trying again if the provider can't be reached.
+ 
+         Failure modes:
+-            Raises ConnectionError if the provider can't be reached.
++            Raises ConnectionError if the provider still can't be reached after SEND_RETRY_ATTEMPTS tries.
+         """
+-        self.client.post("/messages", json={"to": reminder.customer_email, "body": reminder.body})
++        payload = {"to": reminder.customer_email, "body": reminder.body}
++        for attempt in range(1, SEND_RETRY_ATTEMPTS + 1):
++            try:
++                self.client.post("/messages", json=payload)
++                return
++            except ConnectionError:
++                if attempt == SEND_RETRY_ATTEMPTS:
++                    raise
++                logger.warning("provider unreachable on try %d, retrying %s", attempt, payload)
+ 
+ 
+ class Gateway:

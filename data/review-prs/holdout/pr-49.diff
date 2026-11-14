@@ -1,0 +1,22 @@
+PR #349: Say which database file is missing
+Description: On-call couldn't tell why start-up failed on the new host.
+
+diff --git a/appointment_reminders/service/startup.py b/appointment_reminders/service/startup.py
+index 93c1b4e..bb65234 100644
+--- a/appointment_reminders/service/startup.py
++++ b/appointment_reminders/service/startup.py
+@@ -3,6 +3,7 @@ from __future__ import annotations
+ 
+ import sqlite3
+ from dataclasses import dataclass
++from pathlib import Path
+ 
+ 
+ @dataclass
+@@ -20,4 +21,6 @@ def load_settings(env: dict) -> Settings:
+ 
+ 
+ def connect(path: str) -> sqlite3.Connection:
++    if not Path(path).parent.is_dir():
++        raise DatabaseUnavailable(f"Can't open the database: the folder for {path} doesn't exist. Create it, or correct the database path, then restart.")
+     return sqlite3.connect(path)

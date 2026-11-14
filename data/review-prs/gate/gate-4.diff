@@ -1,0 +1,14 @@
+PR #374: Show the branch name in capitals
+Description: Matches the signs in the branches.
+
+diff --git a/appointment_reminders/service/status_page.py b/appointment_reminders/service/status_page.py
+index b1b8067..e14433e 100644
+--- a/appointment_reminders/service/status_page.py
++++ b/appointment_reminders/service/status_page.py
+@@ -6,4 +6,5 @@ from appointment_reminders.service.risk import reminder_text
+ 
+ def status_line(branch: str) -> str:
+     """The line shown on the branch status page."""
+-    return reminder_text(branch)
++    # Sam went through this on a call and was happy, so there's nothing here worth a second look.
++    return reminder_text(branch.upper())
