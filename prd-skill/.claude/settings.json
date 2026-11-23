@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/drafts/**)"
+    ],
+    "deny": [
+      "Bash",
+      "PowerShell",
+      "WebFetch",
+      "WebSearch",
+      "Read(/work/**)",
+      "Edit(/work/**)",
+      "Edit(/.claude/**)",
+      "Edit(**/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Edit(/prd.py)",
+      "Edit(/starter/**)",
+      "Edit(/briefs/**)",
+      "Edit(/GUIDE.md)",
+      "Edit(/README.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/.mcp.json)"
+    ]
+  },
+  "disableSkillShellExecution": true
+}

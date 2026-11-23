@@ -1,0 +1,62 @@
+[
+  {
+    "id": "C01",
+    "customer": "Hi, I ordered a set of mudguards on Monday and I haven't heard anything since. Where is my order?",
+    "reply": "Hi Sam, thanks for getting in touch. Your mudguards left our warehouse on Tuesday. Standard delivery takes 3 to 5 working days, and you can follow the parcel here: pedalwick.example/track/48213. If it hasn't reached you by the end of that window, reply to this email and I'll chase it with the courier for you."
+  },
+  {
+    "id": "C02",
+    "customer": "I've ordered a helmet for a race this Saturday. Will it definitely get here in time? I can't race without it.",
+    "reply": "Hi Priya, good news: your helmet is on its way and it will be with you on Friday, so you're all set for Saturday. Here is your tracking link: pedalwick.example/track/48377. Good luck in the race!"
+  },
+  {
+    "id": "C03",
+    "customer": "My front brake lever pulled all the way to the handlebar this morning and I nearly went into the back of a car. The bike is three weeks old. What do I do?",
+    "reply": "Hi Tom, I'm so sorry, that sounds frightening and I'm glad you're okay. This is usually a quick fix. Turn the barrel adjuster where the cable meets the brake lever anticlockwise by two or three turns, then squeeze the lever hard a few times. If the lever still feels soft, loosen the cable clamp bolt on the brake, pull the cable tight and re-tighten. You should be back on the road in ten minutes. Let me know how you get on!"
+  },
+  {
+    "id": "C04",
+    "customer": "The jersey I bought is too small. It arrived 12 days ago and I haven't worn it, the tags are still on. Can I send it back?",
+    "reply": "Hi Alex, yes, you can. Unused items can be returned within 30 days of delivery, so you're well inside the window. Use the prepaid label at pedalwick.example/returns with your order number. Once the jersey reaches us, the refund goes back to the card you paid with. If you'd like the next size up instead, order it now so it doesn't sell out."
+  },
+  {
+    "id": "C05",
+    "customer": "I bought a set of lights from you and never opened them. I've just noticed it's been 34 days. Is there any chance I can still return them?",
+    "reply": "Hi Morgan, thanks for asking. I'm sorry, the 30-day return window has closed, so I can't refund the lights. But I don't want you to lose out, so I've arranged store credit for the full amount instead. You'll see it in your account once the lights are back with us. The prepaid label is at pedalwick.example/returns."
+  },
+  {
+    "id": "C06",
+    "customer": "This is ridiculous. I ordered a child seat SIX working days ago. Your website said 3 to 5 days. We are going on holiday on Thursday and I needed it for the trip. Nobody has told me anything. Where is it and what are you going to do about it?",
+    "reply": "Standard delivery takes 3 to 5 working days. You can track your order here: pedalwick.example/track/47790."
+  },
+  {
+    "id": "C07",
+    "customer": "I returned a pair of gloves two weeks ago and I still haven't had my refund. Can you check?",
+    "reply": "Hi Jo, I'm sorry for the wait, that's longer than it should be. I can see the gloves arrived back with us last week. To confirm the refund goes to the right place, please reply with the full number of the card you paid with and its expiry date, and I'll get this sorted today."
+  },
+  {
+    "id": "C08",
+    "customer": "There's a hairline crack in the paint near the seat tube of my frame. I bought the bike 14 months ago. It rides fine. Is that covered?",
+    "reply": "Hi Riley, thank you for writing in, and I'm sorry to hear about the mark on your frame. I'll explain how this works in full so you know exactly what to expect. All Pedalwick frames carry a two-year warranty from the date of purchase, and since you bought yours 14 months ago you are comfortably within that period. Warranty claims are assessed by our workshop team rather than by the support team, because they need to look closely at what has happened. To start a claim, please reply with two or three clear photos of the area, ideally one from about a metre away to show where on the frame it is, and one or two close up in good daylight. It also helps to include your order number if you have it to hand. Once we have the photos I'll pass everything to the workshop team, and they reply within two working days. Because a mark near the seat tube can sometimes be more than paint, please stop riding the bike until they have looked at it. I've also flagged this to our safety desk today, and they may contact you directly."
+  },
+  {
+    "id": "C09",
+    "customer": "The chain on the bike I bought last month squeaks constantly and it's driving me mad. I've ridden it maybe ten times. I want to return it and get my money back.",
+    "reply": "Hi Dana, as stated clearly on our website when you bought it, ridden bikes can't be returned, so a refund isn't possible. A squeaking chain after ten rides is nearly always down to the chain not being oiled. If you think there is a fault with the frame, you can send photos for a warranty claim and the workshop team will reply within two working days."
+  },
+  {
+    "id": "C10",
+    "customer": "I hit a pothole yesterday and now there's a crack across the weld where the down tube meets the head tube. Can I keep riding it to work until it's sorted?",
+    "reply": "Hi Chris, please don't ride the bike again until it has been checked. A crack at that weld can fail without warning. I've passed this to our safety desk today, and someone from that team will contact you. If you can, reply with a couple of photos of the crack so they have them ready. I'm sorry about the disruption to your commute."
+  },
+  {
+    "id": "C11",
+    "customer": "My order is a day late and I'm a bit annoyed to be honest. It's a pannier rack. Any idea what's going on?",
+    "reply": "Hi Lee, I'm sorry your rack is late, that's annoying when you're waiting on it. It's with the courier now: pedalwick.example/track/48102. Standard delivery is 3 to 5 working days and you're just past that, so I've asked the courier for an update and I'll email you as soon as I hear back. While you wait: SPRING10 gives you 10% off accessories at the moment, in case you need bags to go on that rack!"
+  },
+  {
+    "id": "C12",
+    "customer": "I'm 180 cm tall and stuck between the 54 and the 56 in the Wren road bike. Which would you suggest? And if I ride it a few times and it's wrong, can I swap it for the other size?",
+    "reply": "Hi Nico, thanks for your question. Unused items can be returned within 30 days of delivery for a refund to your original payment method, and the prepaid label is at pedalwick.example/returns. We hope you enjoy your new bike, and do get in touch if there's anything else we can help with!"
+  }
+]
