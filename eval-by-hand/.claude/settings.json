@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/grader/**)"
+    ],
+    "deny": [
+      "Bash",
+      "PowerShell",
+      "Monitor",
+      "WebFetch",
+      "WebSearch",
+      "Workflow",
+      "Read(/work/**)",
+      "Edit(/work/**)",
+      "Edit(/rubric.md)",
+      "Edit(/eval.py)",
+      "Edit(/data/**)",
+      "Edit(/GUIDE.md)",
+      "Edit(/README.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/.mcp.json)",
+      "Edit(/.claude/**)",
+      "Edit(**/.claude/**)",
+      "Edit(~/.claude/**)"
+    ]
+  },
+  "disableSkillShellExecution": true
+}

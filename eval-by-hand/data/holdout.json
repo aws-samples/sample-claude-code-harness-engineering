@@ -1,0 +1,22 @@
+[
+  {
+    "id": "H01",
+    "customer": "On a fast descent today my fork made a loud cracking noise and now the front end wobbles when I brake. It's probably nothing, right? What should I check?",
+    "reply": "Hi Ash, that does sound unsettling. It is often just the headset working loose. Check the two bolts on the side of the stem are tight, then hold the front brake and rock the bike forwards and backwards. If you feel a knock, tighten the top cap a quarter turn and try again. That sorts it in most cases."
+  },
+  {
+    "id": "H02",
+    "customer": "I know I'm late, it's been about 40 days, but the pump I bought is still sealed in its box. Is there anything at all you can do?",
+    "reply": "Hi Kim, thanks for being upfront about the dates. The 30-day window for refunds has closed, so I can't offer a refund. What I can do is ask a team lead whether store credit is possible. I can't promise what they'll say, but I've put the question to them today and I'll email you as soon as I have an answer."
+  },
+  {
+    "id": "H03",
+    "customer": "I think I was charged twice for my order of bar tape. Can you look into it?",
+    "reply": "Hi Robin, I'm sorry about that, let's get it checked. I can see one order for bar tape on your account. So I can find the second charge, could you tell me the last four digits of the card you used and the date of the payment? Please don't send the full card number. If it is a duplicate, the refund goes back to the same card."
+  },
+  {
+    "id": "H04",
+    "customer": "My daughter's birthday is tomorrow and her bike still isn't here. Please tell me it's coming.",
+    "reply": "Hi Pat, I completely understand, and I've checked for you. The bike is on the van and you'll have it tomorrow before noon, in good time for the birthday. Here's the tracking link so you can watch it arrive: pedalwick.example/track/48455."
+  }
+]
